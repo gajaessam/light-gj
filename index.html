@@ -1,0 +1,3538 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>창의 종류에 따른 채광 효과 3D 시뮬레이터 | 기술·가정 주거환경</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js & OrbitControls CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <!-- Pretendard Font CDN (Official Toss Standard Font) -->
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+            heading: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+          },
+          colors: {
+            toss: {
+              blue: '#3182f6',
+              blueDark: '#1b64da',
+              blueLight: '#e8f3ff',
+              grey50: '#f9fafb',
+              grey100: '#f2f4f6',
+              grey200: '#e5e8eb',
+              grey300: '#d1d6db',
+              grey400: '#b0b8c1',
+              grey500: '#8b95a1',
+              grey600: '#6b7684',
+              grey700: '#4e5968',
+              grey800: '#333d4b',
+              grey900: '#191f28',
+              red: '#f04452',
+              redLight: '#feebee',
+              green: '#04c078',
+              greenLight: '#e6f9f0',
+            }
+          }
+        }
+      }
+    };
+  </script>
+</head>
+<body class="bg-toss-grey100 text-toss-grey800 font-sans select-none overflow-hidden h-screen w-screen flex flex-col">
+
+  <!-- ==================== TOP NAVIGATION ==================== -->
+  <header class="h-14 bg-white border-b border-toss-grey200 px-5 flex items-center justify-between z-20 shrink-0">
+    <div class="flex items-center gap-3">
+      <div>
+        <h1 class="text-base font-bold text-toss-grey900 tracking-tight">
+          창의 종류에 따른 채광 효과 3D 시뮬레이터
+        </h1>
+        <p class="text-xs text-toss-grey500 hidden sm:block">기술·가정 | 남중고도 · 측창과 천창 · 창의 형태 · 채광 조절</p>
+      </div>
+    </div>
+
+    <!-- Student Quick Switcher & Controls -->
+    <div class="flex items-center gap-2">
+      <!-- Student Photo Registration Button -->
+      <button id="btnOpenStudentModal" class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-toss-grey100 hover:bg-toss-grey200 text-toss-grey800 transition-all active:scale-95">
+        <div id="topAvatarPreview" class="w-6 h-6 rounded-full overflow-hidden border border-toss-blue bg-toss-blueLight text-toss-blue flex items-center justify-center text-xs font-bold">
+          👤
+        </div>
+        <div class="text-left text-xs">
+          <div class="font-bold text-toss-grey900 leading-tight">학생 사진 설정</div>
+          <div class="text-[10px] text-toss-grey500">얼굴 가이드 맞춤</div>
+        </div>
+      </button>
+
+      <!-- Camera Preset Buttons -->
+      <div class="hidden md:flex items-center bg-toss-grey100 p-1 rounded-xl text-xs gap-0.5">
+        <button id="btnCamIsometric" class="px-3 py-1 rounded-lg bg-white text-toss-grey900 font-bold shadow-sm transition" title="대각선 전체 뷰">
+          입체 뷰
+        </button>
+        <button id="btnCamFront" class="px-3 py-1 rounded-lg text-toss-grey600 hover:text-toss-grey900 font-medium transition" title="방 정면 단면 뷰">
+          정면 뷰
+        </button>
+        <button id="btnCamTop" class="px-3 py-1 rounded-lg text-toss-grey600 hover:text-toss-grey900 font-medium transition" title="지붕 천창 탑뷰">
+          탑 뷰
+        </button>
+      </div>
+
+      <!-- Quiz / Lesson Mode Toggle -->
+      <button id="btnToggleClassMode" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-toss-grey100 hover:bg-toss-grey200 text-xs text-toss-grey800 font-semibold transition active:scale-95">
+        <span id="classModeIcon" class="w-2 h-2 rounded-full bg-toss-blue inline-block"></span>
+        <span id="classModeText">해설 켜짐</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN WORKSPACE ==================== -->
+  <div class="flex-1 relative flex overflow-hidden">
+    
+    <!-- 3D WebGL Canvas Area -->
+    <div id="canvasContainer" class="flex-1 h-full w-full relative cursor-grab active:cursor-grabbing bg-slate-900">
+      <!-- 3D Canvas injected here -->
+
+      <!-- Real-time Sun Altitude Badge in 3D (Positioned at top-right to keep sun 100% visible) -->
+      <div class="absolute top-4 right-4 z-10 pointer-events-none bg-white/95 border border-toss-grey200 shadow-sm rounded-2xl px-3.5 py-2 text-xs flex items-center gap-2.5 text-toss-grey800">
+        <span class="w-2 h-2 rounded-full bg-toss-blue"></span>
+        <div>
+          <span class="text-toss-blue font-bold" id="badgeSeason">봄·가을</span>
+          <span class="text-toss-grey900 font-extrabold ml-1" id="badgeAltitude">53.5°</span>
+          <span class="text-toss-grey500 text-[11px] block" id="badgeNoonTime">정오 남중고도</span>
+        </div>
+      </div>
+
+      <!-- Student Speech Bubble (Directly tracks 3D Student Figure position) -->
+      <div id="studentSpeechBubble" class="absolute pointer-events-none z-30 transition-opacity duration-200 select-none" style="left: 50%; top: 35%; transform: translate(-50%, -100%);">
+        <div id="speechBubbleCard" class="bg-white border border-toss-grey200 rounded-2xl px-4 py-3 shadow-md max-w-[280px] sm:max-w-[310px] pointer-events-auto">
+          <div class="flex items-center justify-between gap-2 border-b border-toss-grey200 pb-1.5 mb-1.5">
+            <span class="text-[11px] font-bold text-toss-grey600">현재 채광 체감</span>
+            <span id="speechLightStatusBadge" class="text-[10px] px-2.5 py-0.5 rounded-full font-bold text-toss-blue bg-toss-blueLight border border-toss-blue/20">
+              적정 채광 (쾌적함)
+            </span>
+          </div>
+          <p id="speechText" class="text-xs text-toss-grey900 font-medium leading-relaxed break-keep">
+            "햇살이 부드럽고 따뜻하게 들어와서 책 읽기에 딱 좋아요."
+          </p>
+        </div>
+        <!-- Downward Speech Tail Arrow pointing to student's head -->
+        <div class="flex justify-center -mt-[1px]">
+          <div id="speechBubbleArrow" class="w-0 h-0 border-x-[6px] border-x-transparent border-t-[7px] border-t-white drop-shadow-sm"></div>
+        </div>
+      </div>
+
+      <!-- Quick 3D Compass / Orientation in Canvas -->
+      <div class="absolute bottom-4 left-4 z-10 bg-white/95 border border-toss-grey200 shadow-sm px-3.5 py-2 rounded-xl text-xs text-toss-grey800 flex items-center gap-3">
+        <div class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-toss-blue"></span>
+          <span class="font-bold text-toss-blue">남쪽 (창문 방향)</span>
+        </div>
+        <div class="text-toss-grey300">|</div>
+        <div class="text-toss-grey500">마우스 좌클릭: 360° 회전 · 휠: 줌 · 학생 드래그: 위치 이동</div>
+      </div>
+    </div>
+
+    <!-- ==================== INTERACTIVE CONTROL PANEL (Right Sidebar) ==================== -->
+    <aside class="w-80 md:w-96 bg-toss-grey100 border-l border-toss-grey200 flex flex-col h-full overflow-y-auto shrink-0 z-10 text-xs">
+      
+      <!-- Panel Header -->
+      <div class="p-4 bg-white border-b border-toss-grey200 flex items-center justify-between">
+        <h2 class="font-bold text-sm text-toss-grey900">채광 실험 제어판</h2>
+        <button id="btnResetAll" class="text-xs text-toss-grey500 hover:text-toss-blue font-semibold transition active:scale-95">
+          초기화
+        </button>
+      </div>
+
+      <div class="p-3.5 space-y-3">
+        
+        <!-- Helpful Student Drag Guide Card (Moved here so 3D Sun is 100% unobstructed) -->
+        <div class="bg-toss-blueLight/60 border border-toss-blue/20 rounded-2xl p-3 flex items-center gap-3">
+          <div class="w-8 h-8 rounded-xl bg-toss-blue text-white flex items-center justify-center shrink-0 font-bold shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11"></path></svg>
+          </div>
+          <div>
+            <div class="font-bold text-toss-grey900 text-xs leading-tight">학생 피규어 드래그 이동</div>
+            <div class="text-toss-grey600 text-[11px] mt-0.5">3D 방 안에서 학생을 마우스로 직접 끌어 창가, 중앙, 구석으로 자유롭게 옮겨보세요.</div>
+          </div>
+        </div>
+
+        <!-- MODULE 1: 태양 방위 및 남중고도 -->
+        <section class="bg-white rounded-2xl p-4 border border-toss-grey200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-toss-grey900 text-sm flex items-center gap-1.5">
+              <span class="text-toss-blue">1.</span> 창의 방위 & 남중고도
+            </label>
+            <span class="text-[11px] text-toss-grey500 font-medium">
+              남향 창문 기준
+            </span>
+          </div>
+
+          <!-- Seasonal Quick Buttons -->
+          <div class="grid grid-cols-3 gap-2">
+            <button data-season="winter" class="season-btn flex flex-col items-center justify-center p-2 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 hover:bg-toss-grey100 transition active:scale-95">
+              <span class="text-[11px] text-toss-grey500 mb-0.5">동지</span>
+              <span class="font-bold text-toss-grey900 text-xs">겨울</span>
+              <span class="text-[11px] text-toss-grey500 font-medium">30.0°</span>
+            </button>
+            <button data-season="spring" class="season-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-toss-blue bg-toss-blueLight text-toss-blue font-bold transition active:scale-95">
+              <span class="text-[11px] text-toss-blue mb-0.5">춘추분</span>
+              <span class="font-bold text-toss-blue text-xs">봄·가을</span>
+              <span class="text-[11px] text-toss-blue font-bold">53.5°</span>
+            </button>
+            <button data-season="summer" class="season-btn flex flex-col items-center justify-center p-2 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 hover:bg-toss-grey100 transition active:scale-95">
+              <span class="text-[11px] text-toss-grey500 mb-0.5">하지</span>
+              <span class="font-bold text-toss-grey900 text-xs">여름</span>
+              <span class="text-[11px] text-toss-grey500 font-medium">77.0°</span>
+            </button>
+          </div>
+
+          <!-- Altitude Fine Slider -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex justify-between text-toss-grey700 text-xs">
+              <span class="font-medium">남중고도 미세조절</span>
+              <span id="txtAltitudeVal" class="font-bold text-toss-blue">53.5°</span>
+            </div>
+            <input id="sliderAltitude" type="range" min="15" max="85" step="0.5" value="53.5" class="w-full accent-toss-blue cursor-pointer h-1.5 bg-toss-grey200 rounded-lg">
+            <div class="flex justify-between text-[11px] text-toss-grey500 px-0.5">
+              <span>15° (일출/일몰)</span>
+              <span>85° (천정 직사)</span>
+            </div>
+          </div>
+
+          <!-- Solar Penetration Depth Indicator (Toss Style) -->
+          <div class="border-t border-toss-grey200 pt-2.5 space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-toss-grey700 font-medium">햇빛 실내 유입 깊이</span>
+              <span id="badgePenetration" class="text-[12px] font-bold text-toss-blue">중간 유입 (~1.6m)</span>
+            </div>
+            <div id="txtPenetrationDesc" class="text-xs text-toss-grey600 leading-snug">
+              봄·가을 (춘추분): 책상 위치까지 온화하게 유입되어 쾌적합니다.
+            </div>
+          </div>
+
+          <!-- Pedagogical Note (Toss Callout) -->
+          <div class="edu-note text-xs text-toss-grey700 bg-toss-grey100 rounded-xl p-3 leading-relaxed">
+            <strong>남향 창의 사계절 원리</strong>: 겨울에는 남중고도가 낮아(30°) 방 안 깊숙이 햇빛이 들어와 자연 난방이 되고, 여름에는 남중고도가 높아(77°) 창가 바로 앞에만 햇빛이 닿아 실내 과열을 방지합니다.
+          </div>
+        </section>
+
+        <!-- MODULE 2: 창의 위치 (측창 vs 천창) -->
+        <section class="bg-white rounded-2xl p-4 border border-toss-grey200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-toss-grey900 text-sm flex items-center gap-1.5">
+              <span class="text-toss-blue">2.</span> 창의 위치 (측창과 천창)
+            </label>
+            <span class="text-[11px] text-toss-grey500 font-medium">비교 탐구</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <!-- Side Window Toggle -->
+            <button id="btnToggleSideWindow" class="p-2.5 rounded-xl border-2 border-toss-blue bg-toss-blueLight text-toss-blue flex flex-col items-center gap-1 transition active:scale-95">
+              <span class="font-bold text-toss-blue text-xs mt-0.5">측창 (벽창)</span>
+              <span id="badgeSideWindow" class="text-[11px] px-2 py-0.5 rounded-full bg-toss-blue text-white font-bold">열림 (채광 중)</span>
+            </button>
+            <!-- Skylight Toggle -->
+            <button id="btnToggleSkylight" class="p-2.5 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 flex flex-col items-center gap-1 transition active:scale-95">
+              <span class="font-medium text-toss-grey700 text-xs mt-0.5">천창 (지붕창)</span>
+              <span id="badgeSkylight" class="text-[11px] px-2 py-0.5 rounded-full bg-toss-grey200 text-toss-grey500 font-medium">닫힘</span>
+            </button>
+          </div>
+
+          <!-- Comparison Features -->
+          <div class="border-t border-toss-grey200 pt-2.5 grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <div class="font-bold text-toss-grey900">측창의 특징</div>
+              <div class="text-toss-grey600 text-[11px] mt-0.5 leading-snug">• 시공·관리 용이<br>• 빛 분포 불균일<br>• 창가만 집중 밝음</div>
+            </div>
+            <div>
+              <div class="font-bold text-toss-grey900">천창의 특징</div>
+              <div class="text-toss-grey600 text-[11px] mt-0.5 leading-snug">• 측창의 3배 밝기<br>• 실내 균일한 분포<br>• 관리·시공 어려움</div>
+            </div>
+          </div>
+
+          <div class="edu-note text-xs text-toss-grey700 bg-toss-grey100 rounded-xl p-3 leading-relaxed">
+            천창을 열면 바닥 전체로 빛이 쏟아져 방 전체가 골고루 3배 밝아지는 모습을 확인해 보세요.
+          </div>
+        </section>
+
+        <!-- MODULE 3: 창의 형태 -->
+        <section class="bg-white rounded-2xl p-4 border border-toss-grey200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-toss-grey900 text-sm flex items-center gap-1.5">
+              <span class="text-toss-blue">3.</span> 창의 형태
+            </label>
+            <span class="text-[11px] text-toss-grey500 font-medium">
+              면적 1.60 ㎡ 동일
+            </span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnShapeTall" class="p-2.5 rounded-xl border-2 border-toss-blue bg-toss-blueLight text-toss-blue flex flex-col items-center gap-1.5 transition active:scale-95">
+              <div class="w-3.5 h-7 border-2 border-toss-blue bg-toss-blue/20 rounded-sm"></div>
+              <div class="text-center">
+                <span class="font-bold text-toss-blue text-xs block leading-tight">위아래로 긴 창</span>
+                <span class="text-[11px] text-toss-blue/80 block mt-0.5 font-medium">0.8m × 2.0m</span>
+                <span class="text-[10px] text-toss-blue font-bold block mt-0.5">방 안쪽까지 채광</span>
+              </div>
+            </button>
+            <button id="btnShapeWide" class="p-2.5 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 flex flex-col items-center gap-1.5 transition active:scale-95">
+              <div class="w-7 h-3.5 border border-toss-grey400 bg-toss-grey200 rounded-sm"></div>
+              <div class="text-center">
+                <span class="font-medium text-toss-grey700 text-xs block leading-tight">가로로 넓은 창</span>
+                <span class="text-[11px] text-toss-grey500 block mt-0.5">2.5m × 0.64m</span>
+                <span class="text-[10px] text-toss-grey500 font-medium block mt-0.5">창가 주변만 채광</span>
+              </div>
+            </button>
+          </div>
+
+          <div class="edu-note text-xs text-toss-grey700 bg-toss-grey100 rounded-xl p-3 leading-relaxed">
+            <strong>형태별 원리</strong>: 같은 면적(1.6㎡)이라도 <strong>위아래로 긴 창</strong>은 빛을 방 안쪽 깊숙이 보내 실내 전체가 밝아지고, <strong>가로로 넓은 창</strong>은 창가에만 빛이 머뭅니다.
+          </div>
+        </section>
+
+        <!-- MODULE 4: 채광 조절 방법 -->
+        <section class="bg-white rounded-2xl p-4 border border-toss-grey200 shadow-sm space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="font-bold text-toss-grey900 text-sm flex items-center gap-1.5">
+              <span class="text-toss-blue">4.</span> 채광 조절 (블라인드)
+            </label>
+            <span id="txtBlindVal" class="text-xs font-bold text-toss-blue">0% (완전 개방)</span>
+          </div>
+
+          <!-- Blind Pull Slider -->
+          <div class="space-y-1.5">
+            <input id="sliderBlind" type="range" min="0" max="100" step="5" value="0" class="w-full accent-toss-blue cursor-pointer h-1.5 bg-toss-grey200 rounded-lg">
+            <div class="flex justify-between text-[11px] text-toss-grey500">
+              <span>완전 개방</span>
+              <span>부분 조절</span>
+              <span>차광</span>
+            </div>
+          </div>
+
+          <div class="edu-note text-xs text-toss-grey700 bg-toss-grey100 rounded-xl p-3 leading-relaxed">
+            채광이 과도하면 눈이 피로해지고 실내 온도가 높아집니다. 블라인드로 빛의 세기를 알맞게 조절해 보세요.
+          </div>
+        </section>
+
+      </div>
+    </aside>
+  </div>
+
+  <!-- ==================== STUDENT PHOTO / WEBCAM MODAL ==================== -->
+  <div id="modalStudent" class="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-white border border-toss-grey200 rounded-2xl max-w-2xl w-full max-h-[92vh] sm:max-h-[86vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      
+      <!-- Modal Header (Compact) -->
+      <div class="flex items-center justify-between border-b border-toss-grey200 px-5 py-3.5 bg-white shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-xl bg-toss-blueLight text-toss-blue flex items-center justify-center text-sm font-bold">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          </div>
+          <div>
+            <h3 class="font-bold text-toss-grey900 text-sm">학생 사진 등록 및 얼굴 맞춤</h3>
+            <p class="text-[11px] text-toss-grey500">눈·코·입 가이드라인에 맞춰 사진 위치와 크기를 맞춰보세요</p>
+          </div>
+        </div>
+        <button id="btnCloseModal" class="w-7 h-7 rounded-full bg-toss-grey100 hover:bg-toss-grey200 text-toss-grey600 flex items-center justify-center text-xs font-bold transition active:scale-95">
+          ✕
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-4 space-y-3.5 overflow-y-auto flex-1 bg-white">
+        
+        <!-- Photo Registration Tabs (Upload vs Webcam) -->
+        <div class="flex rounded-xl bg-toss-grey100 p-1 border border-toss-grey200 text-xs max-w-sm mx-auto">
+          <button id="tabUpload" class="flex-1 py-1.5 rounded-lg bg-white text-toss-grey900 font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+            <span>사진 파일 업로드</span>
+          </button>
+          <button id="tabWebcam" class="flex-1 py-1.5 rounded-lg text-toss-grey500 hover:text-toss-grey900 font-medium transition flex items-center justify-center gap-1.5">
+            <span>웹캠 실시간 촬영</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: FILE UPLOAD SECTION -->
+        <div id="sectionUpload" class="space-y-2.5">
+          <!-- Dropzone (shown initially when no photo) -->
+          <label id="dropZoneUpload" for="filePhotoInput" class="w-full border-2 border-dashed border-toss-blue/40 hover:border-toss-blue rounded-2xl py-7 px-4 flex flex-col items-center justify-center gap-2 cursor-pointer bg-toss-blueLight/30 hover:bg-toss-blueLight/50 transition">
+            <div class="w-10 h-10 rounded-full bg-toss-blueLight text-toss-blue flex items-center justify-center">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+            </div>
+            <span class="text-xs font-bold text-toss-grey900 text-center">클릭하여 사진 선택 (또는 여기에 사진 끌어다 놓기)</span>
+            <span class="text-[11px] text-toss-grey500">JPG, PNG, WebP 사진 파일 지원</span>
+            <div id="uploadStatusText" class="text-[11px] text-toss-blue font-medium mt-0.5">얼굴이 정면을 바라보는 사진을 올리면 자연스럽게 합성됩니다.</div>
+          </label>
+          <input id="filePhotoInput" type="file" accept="image/*" class="hidden">
+
+          <!-- Direct Interactive Facial Guideline Studio (Side-by-Side on desktop) -->
+          <div id="cropGuideStudio" class="hidden bg-toss-grey50 border border-toss-grey200 rounded-2xl p-3.5">
+            <div class="grid grid-cols-1 sm:grid-cols-12 gap-3.5 items-center">
+              
+              <!-- Left: Interactive Guideline Canvas Viewport (Compact 208px) -->
+              <div class="sm:col-span-6 flex flex-col items-center justify-center">
+                <div class="relative w-48 h-48 sm:w-52 sm:h-52 rounded-xl overflow-hidden border-2 border-toss-blue bg-slate-950 flex items-center justify-center select-none touch-none shrink-0 shadow-sm">
+                  <canvas id="cropGuideCanvas" width="256" height="256" class="w-full h-full cursor-grab active:cursor-grabbing block"></canvas>
+                  
+                  <!-- Tip Pill on Canvas -->
+                  <div class="absolute bottom-1.5 left-2 right-2 bg-white/95 border border-toss-grey200 rounded-lg py-0.5 px-2 text-[10px] text-toss-grey800 text-center font-medium pointer-events-none shadow-sm">
+                    사진 드래그: 이동 · 휠: 줌 조절
+                  </div>
+                </div>
+
+                <!-- Mini Zoom Bar below Canvas -->
+                <div class="flex items-center justify-center gap-1.5 mt-2 text-xs">
+                  <button id="btnZoomOut" type="button" class="w-7 h-6 rounded-md bg-toss-grey200 hover:bg-toss-grey300 text-toss-grey800 font-bold transition flex items-center justify-center active:scale-95" title="축소">
+                    -
+                  </button>
+                  <span id="txtZoomVal" class="text-toss-blue font-bold px-1.5 py-0.5 bg-white rounded border border-toss-grey200 text-[10px]">
+                    1.00x
+                  </span>
+                  <button id="btnZoomIn" type="button" class="w-7 h-6 rounded-md bg-toss-grey200 hover:bg-toss-grey300 text-toss-grey800 font-bold transition flex items-center justify-center active:scale-95" title="확대">
+                    +
+                  </button>
+                  <input id="sliderCropZoom" type="range" min="0.5" max="3.0" step="0.05" value="1.0" class="w-20 accent-toss-blue cursor-pointer h-1.5 bg-toss-grey200 rounded-lg ml-1" title="확대/축소">
+                  <button id="btnResetCrop" type="button" class="text-[10px] text-toss-grey600 hover:text-toss-grey900 px-2 py-0.5 rounded bg-toss-grey200 hover:bg-toss-grey300 transition ml-1 active:scale-95" title="위치 초기화">
+                    초기화
+                  </button>
+                </div>
+              </div>
+
+              <!-- Right: Guide Explanation & Action Controls -->
+              <div class="sm:col-span-6 flex flex-col justify-between space-y-2.5 text-xs">
+                <div class="space-y-1.5 bg-white p-3 rounded-xl border border-toss-grey200">
+                  <div class="flex items-center justify-between">
+                    <span class="font-bold text-toss-blue text-xs flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-toss-blue"></span>
+                      <span>눈·코·입 맞춤 가이드</span>
+                    </span>
+                    <button id="btnToggleGuidelines" type="button" class="text-[10px] px-2 py-0.5 rounded-md bg-toss-grey100 hover:bg-toss-grey200 text-toss-grey700 border border-toss-grey200 transition flex items-center gap-1 font-medium" title="가이드라인 켜기/끄기">
+                      <span id="txtGuideToggleText">가이드 켜짐</span>
+                    </button>
+                  </div>
+                  <p class="text-[11px] text-toss-grey700 leading-snug">
+                    사진을 끌어서 <strong>눈(파란 타깃)</strong>과 <strong>입(분홍 곡선)</strong> 위치에 맞춰보세요.
+                  </p>
+                  <div class="text-[10px] text-toss-green font-medium">
+                    가이드에 맞추면 3D 캐릭터 표정 효과가 자연스럽게 들어맞습니다.
+                  </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-2">
+                  <button id="btnChangePhoto" type="button" class="flex-1 py-2 rounded-xl bg-toss-grey100 hover:bg-toss-grey200 border border-toss-grey200 text-toss-grey800 text-xs font-semibold transition flex items-center justify-center gap-1 active:scale-95">
+                    <span>다른 사진으로 변경</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: WEBCAM SECTION -->
+        <div id="sectionWebcam" class="hidden space-y-2">
+          <div class="relative w-full max-w-sm mx-auto h-44 bg-slate-950 rounded-xl overflow-hidden border border-toss-grey200 flex items-center justify-center">
+            <video id="webcamVideo" autoplay playsinline muted class="w-full h-full object-cover"></video>
+            <!-- Countdown Overlay -->
+            <div id="webcamCountdown" class="absolute inset-0 bg-black/60 flex items-center justify-center text-5xl font-black text-toss-blue hidden">
+              3
+            </div>
+            <!-- Flash -->
+            <div id="flashOverlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-200"></div>
+            <!-- Face Guide Circle -->
+            <div class="absolute w-36 h-36 rounded-full border border-dashed border-toss-blue/60 pointer-events-none flex items-center justify-center">
+              <span class="text-[10px] text-white font-medium bg-black/60 px-2 py-0.5 rounded-full">얼굴 맞추기</span>
+            </div>
+          </div>
+
+          <div class="flex gap-2 max-w-sm mx-auto">
+            <button id="btnCaptureCountdown" class="flex-1 py-2.5 rounded-xl bg-toss-blue hover:bg-toss-blueDark text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition active:scale-95">
+              <span>3초 후 촬영</span>
+            </button>
+            <button id="btnCaptureInstant" class="px-4 py-2.5 rounded-xl bg-toss-grey100 hover:bg-toss-grey200 text-xs font-semibold text-toss-grey800 transition active:scale-95">
+              즉시 찰칵
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer / Bottom Application & Preview Bar (Compact Fixed Bottom) -->
+      <div class="flex items-center justify-between gap-3 bg-white border-t border-toss-grey200 px-5 py-3 shrink-0">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <canvas id="facePreviewCanvas" width="96" height="96" class="w-9 h-9 rounded-full border-2 border-toss-blue bg-toss-grey100 shrink-0"></canvas>
+          <div class="min-w-0 text-xs">
+            <div class="font-bold text-toss-grey900 flex items-center gap-1.5 leading-tight">
+              <span id="previewLabel" class="truncate">실시간 3D 연동 완료</span>
+              <span class="text-[10px] text-toss-blue font-bold shrink-0">● 준비됨</span>
+            </div>
+            <div class="text-toss-grey500 text-[11px] truncate">완료 버튼을 누르면 3D 캐릭터에 적용됩니다.</div>
+          </div>
+        </div>
+        <button id="btnApplyStudent" class="px-5 py-2.5 rounded-xl bg-toss-blue hover:bg-toss-blueDark text-white font-bold text-xs shadow-sm shrink-0 transition-all active:scale-95">
+          이 사진으로 적용하기
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Hidden Working Canvas for Face Composite -->
+  <canvas id="workCanvas" width="256" height="256" class="hidden"></canvas>
+
+  <!-- ==================== LOGIC IMPLEMENTATION ==================== -->
+  <script>
+    // Modern ES6+ standards: const / let only, arrow functions only
+    
+    // --- Application State ---
+    const state = {
+      season: 'spring', // 'winter' (30), 'spring' (53.5), 'summer' (77)
+      altitude: 53.5,   // Degrees (15 ~ 85)
+      sideWindow: true, // 측창 유무
+      skylight: false,  // 천창 유무
+      windowShape: 'tall', // 'tall' (위아래로 긴 창) vs 'wide' (가로로 넓은 창)
+      blindAmount: 0,   // 0 (fully open) to 100 (fully closed)
+      
+      // Student details
+      studentName: '민수',
+      studentPhotoType: 'avatar', // 'webcam', 'upload', 'avatar'
+      studentAvatarId: 'boy1',
+      studentFaceImg: null, // Image element or Canvas
+      
+      // Simulation / UI mode
+      showEduNotes: true,
+      
+      // Dynamic lighting status at student position
+      studentLightLevel: 'optimal', // 'glare', 'optimal', 'dark'
+      studentPos: { x: 0.5, z: 0.2 }, // relative room coordinates
+      faceCrop: { zoom: 1.0, panX: 0, panY: 0 },
+      showGuidelines: true,
+    };
+
+    // Random Names for Quick Switch
+    const RANDOM_NAMES = ['민수', '지은', '서준', '수아', '도윤', '하은', '시우', '지아', '예준', '다은'];
+
+    // --- Audio Sound Synthesizer (Web Audio API - No external assets) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    const playTone = (freq, type, duration, gainLevel = 0.05) => {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainLevel, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        // Audio might be blocked before first user gesture
+      }
+    };
+
+    const playShutterSound = () => {
+      playTone(800, 'square', 0.08, 0.1);
+      setTimeout(() => playTone(1200, 'sine', 0.15, 0.12), 60);
+    };
+
+    const playSuccessChime = () => {
+      playTone(523.25, 'sine', 0.15, 0.08); // C5
+      setTimeout(() => playTone(659.25, 'sine', 0.18, 0.08), 100); // E5
+      setTimeout(() => playTone(783.99, 'sine', 0.25, 0.1), 200); // G5
+    };
+
+    // --- Three.js 3D Engine Setup ---
+    let scene, camera, renderer, controls;
+    let dirLight, ambientLight, sunMesh, sideBounceLight, skyBounceLight;
+    let roomGroup, outdoorGroup, studentMesh, volumetricGodRaysGroup;
+    let floorMesh, sideWallMesh, roofMesh;
+    let sideWindowFrame, sideWindowClosedWall, skylightFrame, skylightClosedCover, blindsGroup;
+    let raycaster, planeGeo, dragPlane;
+    let isDraggingStudent = false;
+
+    const canvasContainer = document.getElementById('canvasContainer');
+
+    // Create sunny daytime sky gradient texture
+    const createSkyGradientTexture = () => {
+      const c = document.createElement('canvas');
+      c.width = 16;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createLinearGradient(0, 0, 0, 256);
+      grad.addColorStop(0, '#29b6f6');    // Vivid cheerful sky blue at zenith
+      grad.addColorStop(0.35, '#64b5f6'); // Natural daylight azure
+      grad.addColorStop(0.7, '#b3e5fc');  // Soft sunny daylight horizon
+      grad.addColorStop(1, '#fef9c3');    // Warm golden sun haze at ground level
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 16, 256);
+      return new THREE.CanvasTexture(c);
+    };
+
+    const initThree = () => {
+      // 1. Scene with bright, beautiful sunny daytime atmosphere
+      scene = new THREE.Scene();
+      scene.background = createSkyGradientTexture();
+      scene.fog = new THREE.FogExp2(0xe2f1fc, 0.005);
+
+      // 2. Camera: Enable both Layer 0 (Exterior) and Layer 1 (Interior)
+      camera = new THREE.PerspectiveCamera(40, canvasContainer.clientWidth / canvasContainer.clientHeight, 0.1, 100);
+      camera.position.set(9, 7, 10);
+      camera.layers.enable(0);
+      camera.layers.enable(1);
+
+      // 3. Renderer with high quality shadows
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+      renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.08;
+      canvasContainer.appendChild(renderer.domElement);
+
+      // 4. Controls
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 2 - 0.02; // Don't go below ground
+      controls.minDistance = 4;
+      controls.maxDistance = 25;
+      controls.target.set(0, 1.2, 0);
+
+      // 5. Lights
+      // Ambient Light: Bright natural daylight base (illuminates both exterior and interior)
+      ambientLight = new THREE.AmbientLight(0xffffff, 0.18);
+      ambientLight.layers.enable(0);
+      ambientLight.layers.enable(1);
+      scene.add(ambientLight);
+
+      // Hemisphere Light (Sunny sky blue from above, fresh lawn green reflection from below)
+      const hemiLight = new THREE.HemisphereLight(0x7fc6ff, 0x5aa340, 0.52);
+      hemiLight.layers.enable(0);
+      hemiLight.layers.enable(1);
+      scene.add(hemiLight);
+
+      // Directional Sun Light (Constant sunlight illuminating both exterior and interior)
+      dirLight = new THREE.DirectionalLight(0xfffaea, 3.4);
+      dirLight.castShadow = true;
+      dirLight.shadow.mapSize.width = 2048;
+      dirLight.shadow.mapSize.height = 2048;
+      dirLight.shadow.camera.near = 0.5;
+      dirLight.shadow.camera.far = 45;
+      dirLight.shadow.bias = -0.0002;
+      const d = 5;
+      dirLight.shadow.camera.left = -d;
+      dirLight.shadow.camera.right = d;
+      dirLight.shadow.camera.top = d;
+      dirLight.shadow.camera.bottom = -d;
+      dirLight.layers.enable(0);
+      dirLight.layers.enable(1);
+      scene.add(dirLight);
+
+      // Physical Bounce Light 1: Side Window Floor Reflection
+      // STRICTLY INTERIOR ONLY: Contained within room bounds
+      sideBounceLight = new THREE.PointLight(0xffe29e, 0, 4.8, 1.4);
+      sideBounceLight.position.set(0, 0.22, 0.5);
+      scene.add(sideBounceLight);
+
+      // Physical Bounce Light 2: Skylight Floor Reflection
+      // STRICTLY INTERIOR ONLY: Contained within room bounds
+      skyBounceLight = new THREE.PointLight(0xfff0d4, 0, 4.8, 1.2);
+      skyBounceLight.position.set(0, 0.22, 0);
+      scene.add(skyBounceLight);
+
+      // Sun 3D Visual Mesh (Farther distant sun with golden aura)
+      const sunGeo = new THREE.SphereGeometry(0.52, 24, 24);
+      const sunMat = new THREE.MeshBasicMaterial({ color: 0xffea00 });
+      sunMesh = new THREE.Mesh(sunGeo, sunMat);
+      
+      // Sun Glow Sprite
+      const spriteMat = new THREE.SpriteMaterial({
+        map: createGlowTexture(),
+        color: 0xffa000,
+        transparent: true,
+        blending: THREE.AdditiveBlending
+      });
+      const sunSprite = new THREE.Sprite(spriteMat);
+      sunSprite.scale.set(3.8, 3.8, 1);
+      sunMesh.add(sunSprite);
+      scene.add(sunMesh);
+
+      // Sun Light Ray Indicator (from sun to room origin)
+      const sunLineGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0)]);
+      const sunLineMat = new THREE.LineDashedMaterial({ color: 0xffcc00, dashSize: 0.35, gapSize: 0.2, opacity: 0.45, transparent: true });
+      const sunLine = new THREE.Line(sunLineGeo, sunLineMat);
+      sunLine.computeLineDistances();
+      scene.add(sunLine);
+      sunMesh.userData.line = sunLine;
+
+      // Volumetric Light Group
+      volumetricGodRaysGroup = new THREE.Group();
+      scene.add(volumetricGodRaysGroup);
+
+      // Build 3D Miniature Diorama Room
+      buildRoom();
+
+      // Drag Plane for moving student
+      planeGeo = new THREE.PlaneGeometry(100, 100);
+      planeGeo.rotateX(-Math.PI / 2);
+      dragPlane = new THREE.Mesh(planeGeo, new THREE.MeshBasicMaterial({ visible: false }));
+      scene.add(dragPlane);
+
+      // Setup Raycasting for Dragging
+      raycaster = new THREE.Raycaster();
+      setupStudentDrag();
+
+      // Window Resize Listener
+      window.addEventListener('resize', onWindowResize);
+
+      // Initial Update
+      updateSunPosition();
+      updateWindows();
+      updateStudentVisuals();
+
+      // Start Animation Loop
+      animate();
+    };
+
+    // Helper: Create a radial glow texture for Sun & Highlights
+    const createGlowTexture = () => {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 128;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      grad.addColorStop(0.3, 'rgba(255, 200, 50, 0.7)');
+      grad.addColorStop(0.7, 'rgba(255, 150, 0, 0.2)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 128, 128);
+      return new THREE.CanvasTexture(c);
+    };
+
+    // Helper: Mark object and all nested meshes for interior Layer 1 (enables interior bounce light)
+    const tagInterior = (obj) => {
+      if (!obj) return;
+      obj.traverse((child) => {
+        if (child.isMesh || child.isSprite || child.isLine) {
+          child.layers.enable(1);
+        }
+      });
+    };
+
+    // --- Build 3D Room Diorama ---
+    const buildRoom = () => {
+      roomGroup = new THREE.Group();
+      scene.add(roomGroup);
+
+      // Outdoor Group: strictly isolated from interior bounce lights!
+      outdoorGroup = new THREE.Group();
+      scene.add(outdoorGroup);
+
+      // Helper to make outdoor materials 100% immune to interior window & skylight bounce lights
+      const makeOutdoorMaterial = (mat) => {
+        mat.customProgramCacheKey = () => 'outdoor_no_bounce_lights';
+        mat.onBeforeCompile = (shader) => {
+          // Completely strip out point & spot lights from outdoor shader:
+          // Outdoor objects (trees, deck, lawn, bushes) are lit strictly by natural sun & sky!
+          shader.fragmentShader = shader.fragmentShader
+            .replace('#if ( NUM_POINT_LIGHTS > 0 ) && defined( RE_Direct )', '#if 0')
+            .replace('#if ( NUM_SPOT_LIGHTS > 0 ) && defined( RE_Direct )', '#if 0');
+        };
+        return mat;
+      };
+
+      // Room dimensions: Width 4.6 (X), Height 2.8 (Y), Depth 4.4 (Z)
+      // South Wall is located at +Z (facing south where sunlight comes)
+      // East & West walls, North wall back. Front (East/South-East) cut out for viewing.
+
+      // 1. Wood Floor
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: 0xd9b382,
+        roughness: 0.6,
+        metalness: 0.05
+      });
+      const floorGeo = new THREE.BoxGeometry(4.8, 0.2, 4.6);
+      floorMesh = new THREE.Mesh(floorGeo, floorMat);
+      floorMesh.position.set(0, -0.1, 0);
+      floorMesh.receiveShadow = true;
+      roomGroup.add(floorMesh);
+
+      // Outside Sunny Garden Meadow (Added to outdoorGroup)
+      const gardenMat = makeOutdoorMaterial(new THREE.MeshStandardMaterial({
+        color: 0x5a9a46, // Natural grass green
+        roughness: 0.85,
+        metalness: 0.05
+      }));
+      const gardenGeo = new THREE.BoxGeometry(32, 0.18, 32);
+      const garden = new THREE.Mesh(gardenGeo, gardenMat);
+      garden.position.set(0, -0.19, 2.0);
+      garden.receiveShadow = true;
+      outdoorGroup.add(garden);
+
+      // Outdoor Wooden Patio Deck outside south window (Added to outdoorGroup)
+      const deckMat = makeOutdoorMaterial(new THREE.MeshStandardMaterial({ color: 0xbd9265, roughness: 0.65 }));
+      const deckGeo = new THREE.BoxGeometry(4.8, 0.06, 2.4);
+      const deck = new THREE.Mesh(deckGeo, deckMat);
+      deck.position.set(0, -0.05, 3.45);
+      deck.receiveShadow = true;
+      outdoorGroup.add(deck);
+
+      // Low-poly Garden Tree Helper
+      const createGardenTree = (x, z, scale = 1.0) => {
+        const treeGroup = new THREE.Group();
+        treeGroup.position.set(x, -0.1, z);
+        treeGroup.scale.set(scale, scale, scale);
+
+        // Trunk
+        const trunkMat = makeOutdoorMaterial(new THREE.MeshStandardMaterial({ color: 0x6d4c41, roughness: 0.9 }));
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 1.4, 8), trunkMat);
+        trunk.position.set(0, 0.7, 0);
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        treeGroup.add(trunk);
+
+        // Foliage Crown
+        const foliageMat = makeOutdoorMaterial(new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 0.75, flatShading: true }));
+        const crown1 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.9, 0), foliageMat);
+        crown1.position.set(0, 1.7, 0);
+        crown1.castShadow = true;
+        treeGroup.add(crown1);
+
+        const crown2Mat = makeOutdoorMaterial(new THREE.MeshStandardMaterial({ color: 0x66bb6a, roughness: 0.75, flatShading: true }));
+        const crown2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.65, 0), crown2Mat);
+        crown2.position.set(0.2, 2.25, 0.1);
+        crown2.castShadow = true;
+        treeGroup.add(crown2);
+
+        return treeGroup;
+      };
+
+      outdoorGroup.add(createGardenTree(-3.0, 4.8, 1.15));
+      outdoorGroup.add(createGardenTree(3.0, 5.2, 0.95));
+
+      // Low garden bushes
+      const createGardenBush = (x, z, r, colorHex) => {
+        const bush = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(r, 0),
+          makeOutdoorMaterial(new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.8, flatShading: true }))
+        );
+        bush.position.set(x, r * 0.7 - 0.1, z);
+        bush.castShadow = true;
+        bush.receiveShadow = true;
+        return bush;
+      };
+      outdoorGroup.add(createGardenBush(-1.5, 4.9, 0.42, 0x4caf50));
+      outdoorGroup.add(createGardenBush(1.5, 5.0, 0.45, 0x388e3c));
+
+      // Double guarantee: traverse all outdoor objects and apply makeOutdoorMaterial
+      outdoorGroup.traverse((child) => {
+        if (child.isMesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material.forEach(m => makeOutdoorMaterial(m));
+          } else {
+            makeOutdoorMaterial(child.material);
+          }
+        }
+      });
+
+      // Floor Planks Graphic lines
+      const floorGrid = new THREE.GridHelper(4.6, 12, 0x8a623c, 0xc79d6e);
+      floorGrid.position.set(0, 0.005, 0);
+      floorGrid.material.opacity = 0.25;
+      floorGrid.material.transparent = true;
+      roomGroup.add(floorGrid);
+
+      // 2. North Wall (Back)
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0xf0f1f5, roughness: 0.85 });
+      const northWallGeo = new THREE.BoxGeometry(4.8, 2.8, 0.15);
+      const northWall = new THREE.Mesh(northWallGeo, wallMat);
+      northWall.position.set(0, 1.4, -2.25);
+      northWall.receiveShadow = true;
+      northWall.castShadow = true;
+      roomGroup.add(northWall);
+
+      // 3. West Wall (Left)
+      const westWallGeo = new THREE.BoxGeometry(0.15, 2.8, 4.45);
+      const westWall = new THREE.Mesh(westWallGeo, wallMat);
+      westWall.position.set(-2.35, 1.4, 0);
+      westWall.receiveShadow = true;
+      westWall.castShadow = true;
+      roomGroup.add(westWall);
+
+      // 4. South Wall (Window Wall with opening)
+      sideWallMesh = new THREE.Group();
+      roomGroup.add(sideWallMesh);
+
+      // Wall sections around side window
+      // Bottom panel (sill): 0 to 0.7m
+      // Bottom panel (sill): 0 to 0.35m
+      const southBottom = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.35, 0.15), wallMat);
+      southBottom.position.set(0, 0.175, 2.25);
+      southBottom.castShadow = true;
+      southBottom.receiveShadow = true;
+      sideWallMesh.add(southBottom);
+
+      // Top panel (lintel): 2.45 to 2.8m
+      const southTop = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.35, 0.15), wallMat);
+      southTop.position.set(0, 2.625, 2.25);
+      southTop.castShadow = true;
+      southTop.receiveShadow = true;
+      sideWallMesh.add(southTop);
+
+      // Left panel: X: -2.4 to -1.35
+      const southLeft = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.1, 0.15), wallMat);
+      southLeft.position.set(-1.875, 1.4, 2.25);
+      southLeft.castShadow = true;
+      southLeft.receiveShadow = true;
+      sideWallMesh.add(southLeft);
+
+      // Right panel: X: 1.35 to 2.4
+      const southRight = new THREE.Mesh(new THREE.BoxGeometry(1.05, 2.1, 0.15), wallMat);
+      southRight.position.set(1.875, 1.4, 2.25);
+      southRight.castShadow = true;
+      southRight.receiveShadow = true;
+      sideWallMesh.add(southRight);
+
+      // Window Frame & Glass for Side Window (Opening is 2.7m wide x 2.1m high)
+      sideWindowFrame = new THREE.Group();
+      sideWindowFrame.position.set(0, 1.4, 2.25);
+      sideWallMesh.add(sideWindowFrame);
+
+      // Solid Wall panel when Side Window is CLOSED (fills opening completely)
+      const closedWallGeo = new THREE.BoxGeometry(2.72, 2.12, 0.155);
+      sideWindowClosedWall = new THREE.Mesh(closedWallGeo, wallMat);
+      sideWindowClosedWall.position.set(0, 1.4, 2.25);
+      sideWindowClosedWall.castShadow = true;
+      sideWindowClosedWall.receiveShadow = true;
+      sideWindowClosedWall.visible = false;
+      sideWallMesh.add(sideWindowClosedWall);
+
+      rebuildSideWindowFrame('tall');
+
+      // 5. Roof with Skylight opening (Strictly flush with all walls, clean modern architectural finish)
+      roofMesh = new THREE.Group();
+      roomGroup.add(roofMesh);
+
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 });
+      
+      // Roof North Half (Flush with North Wall outer face Z = -2.325)
+      const roofNorth = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.15, 1.805), roofMat);
+      roofNorth.position.set(0, 2.85, -1.4225);
+      roofNorth.castShadow = true;
+      roofNorth.receiveShadow = true;
+      roofMesh.add(roofNorth);
+
+      // Roof South Half (Flush with South Wall outer face Z = +2.325)
+      const roofSouth = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.15, 1.805), roofMat);
+      roofSouth.position.set(0, 2.85, 1.4225);
+      roofSouth.castShadow = true;
+      roofSouth.receiveShadow = true;
+      roofMesh.add(roofSouth);
+
+      // Roof Left (West)
+      const roofLeft = new THREE.Mesh(new THREE.BoxGeometry(1.43, 0.15, 1.04), roofMat);
+      roofLeft.position.set(-1.685, 2.85, 0);
+      roofLeft.castShadow = true;
+      roofLeft.receiveShadow = true;
+      roofMesh.add(roofLeft);
+
+      // Roof Right (East)
+      const roofRight = new THREE.Mesh(new THREE.BoxGeometry(1.43, 0.15, 1.04), roofMat);
+      roofRight.position.set(1.685, 2.85, 0);
+      roofRight.castShadow = true;
+      roofRight.receiveShadow = true;
+      roofMesh.add(roofRight);
+
+      // Skylight Frame & Glass (Hollow with glass)
+      skylightFrame = new THREE.Group();
+      skylightFrame.position.set(0, 2.85, 0);
+      roofMesh.add(skylightFrame);
+      buildSkylightFrame();
+
+      // Solid Roof panel when Skylight is CLOSED
+      const closedRoofGeo = new THREE.BoxGeometry(1.94, 0.16, 1.04);
+      skylightClosedCover = new THREE.Mesh(closedRoofGeo, roofMat);
+      skylightClosedCover.position.set(0, 2.85, 0);
+      skylightClosedCover.castShadow = true;
+      skylightClosedCover.receiveShadow = true;
+      skylightClosedCover.visible = true; // default skylight is closed
+      roofMesh.add(skylightClosedCover);
+
+      // 7. Blinds / Curtains Group on Side Window
+      blindsGroup = new THREE.Group();
+      blindsGroup.position.set(0, 2.2, 2.18);
+      roomGroup.add(blindsGroup);
+      buildBlinds();
+
+      // 8. Coziness Furniture (Study Room setup)
+      buildFurniture();
+
+      // 9. Student Figure 3D Mesh
+      buildStudentFigure();
+
+      // Enable Interior Layer 1 for bounce lighting across all room elements
+      tagInterior(roomGroup);
+    };
+
+    // Rebuild side window geometry based on shape ('tall' vs 'wide')
+    // EXACT SAME AREA: 0.8m * 2.0m = 1.60 m² vs 2.5m * 0.64m = 1.60 m²
+    const rebuildSideWindowFrame = (shape) => {
+      while (sideWindowFrame.children.length > 0) {
+        sideWindowFrame.remove(sideWindowFrame.children[0]);
+      }
+
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.35 });
+      const wallMat = new THREE.MeshStandardMaterial({ color: 0xf0f1f5, roughness: 0.85 });
+      const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.25,
+        roughness: 0.1,
+        transmission: 0.92,
+        thickness: 0.04
+      });
+
+      const totalHoleW = 2.7;
+      const totalHoleH = 2.1;
+
+      // 100% Equal Area: 1.60 m²
+      const w = (shape === 'tall') ? 0.8 : 2.5;
+      const h = (shape === 'tall') ? 2.0 : 0.64;
+      const yOffset = (shape === 'tall') ? 0 : 0.35; // Wide ribbon window raised higher up (Center Y = 1.75m)
+
+      // Wall fillers to snugly fit window opening
+      if (shape === 'tall') {
+        const fillerW = (totalHoleW - w) / 2; // 0.95m
+        const leftFiller = new THREE.Mesh(new THREE.BoxGeometry(fillerW, totalHoleH, 0.15), wallMat);
+        leftFiller.position.set(-w/2 - fillerW/2, 0, 0);
+        leftFiller.castShadow = true;
+        leftFiller.receiveShadow = true;
+        sideWindowFrame.add(leftFiller);
+
+        const rightFiller = new THREE.Mesh(new THREE.BoxGeometry(fillerW, totalHoleH, 0.15), wallMat);
+        rightFiller.position.set(w/2 + fillerW/2, 0, 0);
+        rightFiller.castShadow = true;
+        rightFiller.receiveShadow = true;
+        sideWindowFrame.add(rightFiller);
+
+        const topFiller = new THREE.Mesh(new THREE.BoxGeometry(w, (totalHoleH - h)/2, 0.15), wallMat);
+        topFiller.position.set(0, h/2 + (totalHoleH - h)/4, 0);
+        topFiller.castShadow = true;
+        sideWindowFrame.add(topFiller);
+
+        const btmFiller = new THREE.Mesh(new THREE.BoxGeometry(w, (totalHoleH - h)/2, 0.15), wallMat);
+        btmFiller.position.set(0, -h/2 - (totalHoleH - h)/4, 0);
+        btmFiller.castShadow = true;
+        sideWindowFrame.add(btmFiller);
+      } else {
+        const fillerW = (totalHoleW - w) / 2; // 0.1m
+        const leftFiller = new THREE.Mesh(new THREE.BoxGeometry(fillerW, totalHoleH, 0.15), wallMat);
+        leftFiller.position.set(-w/2 - fillerW/2, 0, 0);
+        leftFiller.castShadow = true;
+        sideWindowFrame.add(leftFiller);
+
+        const rightFiller = new THREE.Mesh(new THREE.BoxGeometry(fillerW, totalHoleH, 0.15), wallMat);
+        rightFiller.position.set(w/2 + fillerW/2, 0, 0);
+        rightFiller.castShadow = true;
+        sideWindowFrame.add(rightFiller);
+
+        // Wall filler above raised wide ribbon window (top edge at +0.67m, hole top at +1.05m -> 0.38m)
+        const topH = 1.05 - (yOffset + h/2); // 0.38m
+        const topFiller = new THREE.Mesh(new THREE.BoxGeometry(w, topH, 0.15), wallMat);
+        topFiller.position.set(0, yOffset + h/2 + topH/2, 0); // Y = 0.86m
+        topFiller.castShadow = true;
+        sideWindowFrame.add(topFiller);
+
+        // Wall filler below raised wide ribbon window (bottom edge at +0.03m, hole btm at -1.05m -> 1.08m)
+        const btmH = (yOffset - h/2) - (-1.05); // 1.08m
+        const btmFiller = new THREE.Mesh(new THREE.BoxGeometry(w, btmH, 0.15), wallMat);
+        btmFiller.position.set(0, (yOffset - h/2) - btmH/2, 0); // Y = -0.51m
+        btmFiller.castShadow = true;
+        sideWindowFrame.add(btmFiller);
+      }
+
+      // Hollow 4-border frame
+      const t = 0.045; // border thickness
+      const d = 0.12; // frame depth
+
+      // Top Border
+      const topBar = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), frameMat);
+      topBar.position.set(0, yOffset + h/2 - t/2, 0);
+      topBar.castShadow = true;
+      sideWindowFrame.add(topBar);
+
+      // Bottom Border
+      const btmBar = new THREE.Mesh(new THREE.BoxGeometry(w, t, d), frameMat);
+      btmBar.position.set(0, yOffset - h/2 + t/2, 0);
+      btmBar.castShadow = true;
+      sideWindowFrame.add(btmBar);
+
+      // Left Border
+      const leftBar = new THREE.Mesh(new THREE.BoxGeometry(t, h - t*2, d), frameMat);
+      leftBar.position.set(-w/2 + t/2, yOffset, 0);
+      leftBar.castShadow = true;
+      sideWindowFrame.add(leftBar);
+
+      // Right Border
+      const rightBar = new THREE.Mesh(new THREE.BoxGeometry(t, h - t*2, d), frameMat);
+      rightBar.position.set(w/2 - t/2, yOffset, 0);
+      rightBar.castShadow = true;
+      sideWindowFrame.add(rightBar);
+
+      // Mullions
+      if (shape === 'tall') {
+        // Vertical tall window: 1 vertical center divider + 2 horizontal dividers
+        const centerV = new THREE.Mesh(new THREE.BoxGeometry(0.03, h - t*2, d * 0.9), frameMat);
+        centerV.position.set(0, yOffset, 0);
+        sideWindowFrame.add(centerV);
+
+        [-h/4, h/4].forEach(offset => {
+          const divH = new THREE.Mesh(new THREE.BoxGeometry(w - t*2, 0.025, d * 0.9), frameMat);
+          divH.position.set(0, yOffset + offset, 0);
+          sideWindowFrame.add(divH);
+        });
+      } else {
+        // Horizontal wide ribbon window: 3 vertical dividers
+        [-w/3, 0, w/3].forEach(offset => {
+          const divV = new THREE.Mesh(new THREE.BoxGeometry(0.03, h - t*2, d * 0.9), frameMat);
+          divV.position.set(offset, yOffset, 0);
+          sideWindowFrame.add(divV);
+        });
+      }
+
+      // Transparent Clear Glass Pane (Flush & clean)
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(w - t*2, h - t*2), glassMat);
+      glass.position.set(0, yOffset, 0);
+      glass.receiveShadow = true;
+      sideWindowFrame.add(glass);
+
+      // Save dimensions for volumetric ray calculations
+      sideWindowFrame.userData = { w, h, shape, yCenter: 1.4 + yOffset, yTop: 1.4 + yOffset + h/2, yBottom: 1.4 + yOffset - h/2 };
+
+      // Dynamically rebuild blinds to fit the current window size and height!
+      buildBlinds();
+    };
+
+    // Build Skylight frame on the roof (Hollow 4-border frame with glass)
+    const buildSkylightFrame = () => {
+      while (skylightFrame.children.length > 0) {
+        skylightFrame.remove(skylightFrame.children[0]);
+      }
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+      const glassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xe0f2fe,
+        transparent: true,
+        opacity: 0.35,
+        roughness: 0.1,
+        transmission: 0.95,
+      });
+
+      const sw = 1.9;
+      const sd = 1.0;
+      const t = 0.06;
+      const d = 0.12;
+
+      // 4 border bars for roof skylight
+      const barN = new THREE.Mesh(new THREE.BoxGeometry(sw, d, t), frameMat);
+      barN.position.set(0, 0, -sd/2 + t/2);
+      barN.castShadow = true;
+      skylightFrame.add(barN);
+
+      const barS = new THREE.Mesh(new THREE.BoxGeometry(sw, d, t), frameMat);
+      barS.position.set(0, 0, sd/2 - t/2);
+      barS.castShadow = true;
+      skylightFrame.add(barS);
+
+      const barW = new THREE.Mesh(new THREE.BoxGeometry(t, d, sd - t*2), frameMat);
+      barW.position.set(-sw/2 + t/2, 0, 0);
+      barW.castShadow = true;
+      skylightFrame.add(barW);
+
+      const barE = new THREE.Mesh(new THREE.BoxGeometry(t, d, sd - t*2), frameMat);
+      barE.position.set(sw/2 - t/2, 0, 0);
+      barE.castShadow = true;
+      skylightFrame.add(barE);
+
+      // Center cross beam
+      const barC = new THREE.Mesh(new THREE.BoxGeometry(0.04, d * 0.9, sd - t*2), frameMat);
+      skylightFrame.add(barC);
+
+      // Transparent Skylight Glass Pane
+      const glass = new THREE.Mesh(new THREE.PlaneGeometry(sw - t*2, sd - t*2), glassMat);
+      glass.rotation.x = -Math.PI / 2;
+      glass.position.set(0, 0.02, 0);
+      glass.receiveShadow = true;
+      skylightFrame.add(glass);
+    };
+
+    // Build Blinds on side window (dynamically adapts to window shape & position)
+    const buildBlinds = () => {
+      if (!blindsGroup) return;
+      while (blindsGroup.children.length > 0) {
+        blindsGroup.remove(blindsGroup.children[0]);
+      }
+      const isTall = (state.windowShape === 'tall');
+      const w = isTall ? 0.84 : 2.54;
+      const h = isTall ? 2.0 : 0.64;
+      const topY = isTall ? 2.40 : 2.07; // exact top of the window frame
+
+      blindsGroup.position.set(0, topY, 2.18);
+
+      // Top Cassette Header Box
+      const cassetteMat = new THREE.MeshStandardMaterial({ color: 0xd8d8d8, roughness: 0.35 });
+      const cassette = new THREE.Mesh(new THREE.BoxGeometry(w + 0.04, 0.045, 0.045), cassetteMat);
+      cassette.position.set(0, 0.02, 0);
+      cassette.castShadow = true;
+      blindsGroup.add(cassette);
+
+      // Slats
+      const slatMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f7, roughness: 0.45 });
+      const numSlats = isTall ? 24 : 12;
+      for (let i = 0; i < numSlats; i++) {
+        const slat = new THREE.Mesh(new THREE.BoxGeometry(w, 0.042, 0.006), slatMat);
+        slat.castShadow = true;
+        slat.receiveShadow = true;
+        blindsGroup.add(slat);
+      }
+      updateBlindsVisual();
+    };
+
+    const updateBlindsVisual = () => {
+      if (!blindsGroup || blindsGroup.children.length <= 1) return;
+      const isTall = (state.windowShape === 'tall');
+      const h = isTall ? 2.0 : 0.64;
+      const ratio = state.blindAmount / 100; // 0 to 1
+
+      // Children[0] is the cassette; children[1..N] are slats
+      const slats = blindsGroup.children.slice(1);
+      const count = slats.length;
+      slats.forEach((slat, idx) => {
+        // Slats drop down from 0 to -h
+        const targetY = -((idx + 1) / count) * h * Math.max(ratio, 0.03);
+        slat.position.y = targetY;
+        slat.rotation.x = ratio * (Math.PI / 2.8); // rotate to block light
+        slat.visible = (ratio > 0.02) || (idx === 0);
+      });
+    };
+
+    // Build cozy, cute room furniture (desk, study chair, layered bookshelf with books, cozy rug, decor)
+    const buildFurniture = () => {
+      // 1. Cozy Fabric Rug on Floor (Soft cream textured mat with warm border)
+      const rugGroup = new THREE.Group();
+      rugGroup.position.set(0.4, 0.008, 0.2);
+      
+      const rugBaseMat = new THREE.MeshStandardMaterial({ color: 0xfbf8f1, roughness: 0.95 });
+      const rugBase = new THREE.Mesh(new THREE.BoxGeometry(2.35, 0.015, 1.75), rugBaseMat);
+      rugBase.receiveShadow = true;
+      rugGroup.add(rugBase);
+
+      const rugBorderMat = new THREE.MeshStandardMaterial({ color: 0xe0cbaf, roughness: 0.9 });
+      const rugBorder = new THREE.Mesh(new THREE.BoxGeometry(2.45, 0.012, 1.85), rugBorderMat);
+      rugBorder.receiveShadow = true;
+      rugGroup.add(rugBorder);
+
+      // Fringe / Tassels on left & right edges
+      [-1.19, 1.19].forEach(xPos => {
+        const fringeMat = new THREE.MeshStandardMaterial({ color: 0xd6bf9f, roughness: 0.95 });
+        const fringe = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.008, 1.7), fringeMat);
+        fringe.position.set(xPos, 0.006, 0);
+        fringe.receiveShadow = true;
+        rugGroup.add(fringe);
+      });
+      roomGroup.add(rugGroup);
+
+      // 2. Study Desk Group
+      const deskGroup = new THREE.Group();
+      deskGroup.position.set(-1.25, 0, -1.05);
+
+      // Warm Oak Wood Tabletop with soft beveled appearance
+      const oakMat = new THREE.MeshStandardMaterial({ color: 0xd4a373, roughness: 0.5 });
+      const deskTop = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, 0.75), oakMat);
+      deskTop.position.set(0, 0.72, 0);
+      deskTop.castShadow = true;
+      deskTop.receiveShadow = true;
+      deskGroup.add(deskTop);
+
+      // Clean White/Silver Slim Metal Legs
+      const deskLegMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.35, metalness: 0.1 });
+      const legGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.70, 16);
+      [[-0.68, -0.3], [0.68, -0.3], [-0.68, 0.3], [0.68, 0.3]].forEach(([x, z]) => {
+        const leg = new THREE.Mesh(legGeo, deskLegMat);
+        leg.position.set(x, 0.35, z);
+        leg.castShadow = true;
+        deskGroup.add(leg);
+      });
+
+      // Desk Mini 2-Tier Drawer Unit on right side
+      const drawerBodyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 });
+      const drawerBody = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.44, 0.6), drawerBodyMat);
+      drawerBody.position.set(0.48, 0.45, 0);
+      drawerBody.castShadow = true;
+      drawerBody.receiveShadow = true;
+      deskGroup.add(drawerBody);
+
+      // Drawer Knobs
+      const knobMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.4 });
+      [0.55, 0.36].forEach(y => {
+        const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.02, 12), knobMat);
+        knob.rotation.x = Math.PI / 2;
+        knob.position.set(0.48, y, 0.31);
+        deskGroup.add(knob);
+      });
+
+      // --- Cute Desk Accessories ---
+      // A. Cute Desk Lamp with Lamp Shade
+      const lampAccentMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.35 });
+      const lampBase = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.065, 0.02, 16), lampAccentMat);
+      lampBase.position.set(0.55, 0.755, -0.15);
+      lampBase.castShadow = true;
+      deskGroup.add(lampBase);
+
+      const lampArm = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 12), lampAccentMat);
+      lampArm.position.set(0.55, 0.9, -0.15);
+      lampArm.castShadow = true;
+      deskGroup.add(lampArm);
+
+      const lampShade = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.085, 0.1, 16, 1, true), lampAccentMat);
+      lampShade.position.set(0.52, 1.04, -0.15);
+      lampShade.rotation.z = 0.2;
+      lampShade.castShadow = true;
+      deskGroup.add(lampShade);
+
+      const bulbGlow = new THREE.Mesh(
+        new THREE.SphereGeometry(0.025, 12, 12),
+        new THREE.MeshBasicMaterial({ color: 0xffedd5 })
+      );
+      bulbGlow.position.set(0.51, 1.02, -0.15);
+      deskGroup.add(bulbGlow);
+
+      // B. Open Slim Modern Laptop
+      const laptopMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, roughness: 0.3, metalness: 0.4 });
+      const laptopBase = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.012, 0.18), laptopMat);
+      laptopBase.position.set(0.0, 0.75, -0.05);
+      laptopBase.castShadow = true;
+      deskGroup.add(laptopBase);
+
+      const laptopScreen = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.01), laptopMat);
+      laptopScreen.position.set(0.0, 0.83, -0.14);
+      laptopScreen.rotation.x = -0.18;
+      laptopScreen.castShadow = true;
+      deskGroup.add(laptopScreen);
+
+      // Glowing screen display
+      const screenDisplay = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.21, 0.13),
+        new THREE.MeshBasicMaterial({ color: 0x93c5fd })
+      );
+      screenDisplay.position.set(0.0, 0.83, -0.133);
+      screenDisplay.rotation.x = -0.18;
+      deskGroup.add(screenDisplay);
+
+      // C. Colorful Study Books & Notes
+      const book1 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.26), new THREE.MeshStandardMaterial({ color: 0x3b82f6 }));
+      book1.position.set(-0.45, 0.76, -0.1);
+      book1.rotation.y = 0.08;
+      book1.castShadow = true;
+      deskGroup.add(book1);
+
+      const book2 = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.025, 0.24), new THREE.MeshStandardMaterial({ color: 0xf43f5e }));
+      book2.position.set(-0.44, 0.785, -0.1);
+      book2.rotation.y = -0.05;
+      book2.castShadow = true;
+      deskGroup.add(book2);
+
+      // D. Pen Holder Cup with Colorful Pens
+      const cupMat = new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.4 });
+      const penCup = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.03, 0.08, 16), cupMat);
+      penCup.position.set(-0.55, 0.785, 0.18);
+      penCup.castShadow = true;
+      deskGroup.add(penCup);
+
+      [[-0.56, 0.18, 0xef4444, 0.15], [-0.54, 0.19, 0xfacc15, -0.12], [-0.55, 0.17, 0x60a5fa, 0.05]].forEach(([px, pz, color, rot]) => {
+        const pen = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.11), new THREE.MeshBasicMaterial({ color }));
+        pen.position.set(px, 0.81, pz);
+        pen.rotation.z = rot;
+        deskGroup.add(pen);
+      });
+
+      roomGroup.add(deskGroup);
+
+      // 3. Cute Study Chair (Scandinavian wood legs & cozy curved cushion)
+      const chairGroup = new THREE.Group();
+      chairGroup.position.set(-1.25, 0, -0.52);
+
+      // Wooden splayed legs
+      const chairLegMat = new THREE.MeshStandardMaterial({ color: 0xc49a6c, roughness: 0.6 });
+      const chairLegGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.45, 12);
+      [[-0.18, -0.15, 0.15, -0.12], [0.18, -0.15, 0.15, 0.12], [-0.18, 0.15, -0.15, -0.12], [0.18, 0.15, -0.15, 0.12]].forEach(([x, z, rz, rx]) => {
+        const leg = new THREE.Mesh(chairLegGeo, chairLegMat);
+        leg.position.set(x, 0.22, z);
+        leg.rotation.z = rz;
+        leg.rotation.x = rx;
+        leg.castShadow = true;
+        chairGroup.add(leg);
+      });
+
+      // Pastel Mint Rounded Cushion Seat
+      const seatMat = new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.6 });
+      const seat = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.22, 0.06, 24), seatMat);
+      seat.position.y = 0.44;
+      seat.castShadow = true;
+      seat.receiveShadow = true;
+      chairGroup.add(seat);
+
+      // Curved Backrest
+      const backrestGeo = new THREE.BoxGeometry(0.38, 0.22, 0.03);
+      const backrest = new THREE.Mesh(backrestGeo, seatMat);
+      backrest.position.set(0, 0.68, 0.16);
+      backrest.rotation.x = 0.08;
+      backrest.castShadow = true;
+      chairGroup.add(backrest);
+
+      // Backrest Support Poles
+      const poleGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.25);
+      [-0.1, 0.1].forEach(px => {
+        const pole = new THREE.Mesh(poleGeo, deskLegMat);
+        pole.position.set(px, 0.54, 0.16);
+        chairGroup.add(pole);
+      });
+
+      roomGroup.add(chairGroup);
+
+      // 4. Aesthetic Multi-Shelf Bookcase on North-West Wall (Replaces bulky pillar!)
+      const bookcaseGroup = new THREE.Group();
+      bookcaseGroup.position.set(-1.75, 0, -1.9);
+
+      // Main frame (White aesthetic cabinet, 1.55m height)
+      const bcFrameMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+      const bcBack = new THREE.Mesh(new THREE.BoxGeometry(0.86, 1.52, 0.03), bcFrameMat);
+      bcBack.position.set(0, 0.76, -0.14);
+      bookcaseGroup.add(bcBack);
+
+      const bcSideGeo = new THREE.BoxGeometry(0.04, 1.52, 0.32);
+      [-0.41, 0.41].forEach(x => {
+        const side = new THREE.Mesh(bcSideGeo, bcFrameMat);
+        side.position.set(x, 0.76, 0);
+        side.castShadow = true;
+        bookcaseGroup.add(side);
+      });
+
+      // 4 Wooden Shelf Planks
+      const shelfPlankGeo = new THREE.BoxGeometry(0.82, 0.03, 0.31);
+      [0.02, 0.48, 0.94, 1.50].forEach(y => {
+        const plank = new THREE.Mesh(shelfPlankGeo, oakMat);
+        plank.position.set(0, y, 0);
+        plank.castShadow = true;
+        plank.receiveShadow = true;
+        bookcaseGroup.add(plank);
+      });
+
+      // Books on Middle Shelf (Y = 0.50m)
+      const bookColors = [0xef4444, 0x3b82f6, 0x10b981, 0xf59e0b, 0x8b5cf6, 0xec4899];
+      bookColors.forEach((col, idx) => {
+        const b = new THREE.Mesh(
+          new THREE.BoxGeometry(0.04, 0.28, 0.22),
+          new THREE.MeshStandardMaterial({ color: col, roughness: 0.6 })
+        );
+        b.position.set(-0.32 + idx * 0.055, 0.64, 0);
+        b.castShadow = true;
+        bookcaseGroup.add(b);
+      });
+
+      // Leaning Book
+      const leanBook = new THREE.Mesh(
+        new THREE.BoxGeometry(0.04, 0.26, 0.22),
+        new THREE.MeshStandardMaterial({ color: 0x06b6d4, roughness: 0.6 })
+      );
+      leanBook.position.set(0.08, 0.63, 0);
+      leanBook.rotation.z = -0.22;
+      leanBook.castShadow = true;
+      bookcaseGroup.add(leanBook);
+
+      // Cute Decor on Top Shelf (Y = 0.96m): Pastel Clock & Mini Succulent
+      const clockMat = new THREE.MeshStandardMaterial({ color: 0x34d399, roughness: 0.4 });
+      const miniClock = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.04, 20), clockMat);
+      miniClock.rotation.x = Math.PI / 2;
+      miniClock.position.set(-0.25, 1.04, 0);
+      miniClock.castShadow = true;
+      bookcaseGroup.add(miniClock);
+
+      // Mini Succulent Pot on top
+      const miniPot = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.045, 0.09, 12), new THREE.MeshStandardMaterial({ color: 0xffedd5 }));
+      miniPot.position.set(0.22, 1.01, 0);
+      miniPot.castShadow = true;
+      bookcaseGroup.add(miniPot);
+      const miniLeaf = new THREE.Mesh(new THREE.DodecahedronGeometry(0.06, 0), new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.7 }));
+      miniLeaf.position.set(0.22, 1.08, 0);
+      bookcaseGroup.add(miniLeaf);
+
+      // Storage Fabric Bins on Bottom Shelf (Y = 0.05m)
+      [-0.2, 0.2].forEach(bx => {
+        const bin = new THREE.Mesh(
+          new THREE.BoxGeometry(0.32, 0.28, 0.28),
+          new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.9 })
+        );
+        bin.position.set(bx, 0.18, 0);
+        bin.castShadow = true;
+        bin.receiveShadow = true;
+        bookcaseGroup.add(bin);
+      });
+
+      roomGroup.add(bookcaseGroup);
+
+      // 5. Aesthetic North Wall Art & Minimalist Clock
+      // Graphic Sun & Hill Poster Frame
+      const frameGroup = new THREE.Group();
+      frameGroup.position.set(-0.35, 1.85, -2.16);
+
+      const frameMat = new THREE.MeshStandardMaterial({ color: 0x5a3e2b, roughness: 0.6 });
+      const frameBorder = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.0, 0.02), frameMat);
+      frameGroup.add(frameBorder);
+
+      // Canvas with sunny minimalist art
+      const canvasArtMat = new THREE.MeshBasicMaterial({ color: 0xfef3c7 });
+      const canvasArt = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.92), canvasArtMat);
+      canvasArt.position.z = 0.012;
+      frameGroup.add(canvasArt);
+
+      // Sun circle on canvas
+      const artSun = new THREE.Mesh(
+        new THREE.CircleGeometry(0.18, 24),
+        new THREE.MeshBasicMaterial({ color: 0xf59e0b })
+      );
+      artSun.position.set(0, 0.14, 0.014);
+      frameGroup.add(artSun);
+
+      // Minimal hills on canvas
+      const artHill = new THREE.Mesh(
+        new THREE.CircleGeometry(0.35, 24, 0, Math.PI),
+        new THREE.MeshBasicMaterial({ color: 0x34d399 })
+      );
+      artHill.position.set(0, -0.42, 0.015);
+      frameGroup.add(artHill);
+
+      roomGroup.add(frameGroup);
+
+      // Minimalist Wooden Wall Clock (Right side of North wall)
+      const clockGroup = new THREE.Group();
+      clockGroup.position.set(1.0, 2.05, -2.16);
+
+      const wallClock = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.2, 0.2, 0.025, 24),
+        new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+      );
+      wallClock.rotation.x = Math.PI / 2;
+      clockGroup.add(wallClock);
+
+      const rimClock = new THREE.Mesh(
+        new THREE.TorusGeometry(0.2, 0.015, 12, 24),
+        oakMat
+      );
+      clockGroup.add(rimClock);
+
+      // Clock hands
+      const handMat = new THREE.MeshBasicMaterial({ color: 0x1e293b });
+      const hourHand = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.1, 0.005), handMat);
+      hourHand.position.set(0.03, 0.03, 0.015);
+      hourHand.rotation.z = -Math.PI / 4;
+      clockGroup.add(hourHand);
+
+      const minHand = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.14, 0.005), handMat);
+      minHand.position.set(0, 0.06, 0.015);
+      clockGroup.add(minHand);
+
+      roomGroup.add(clockGroup);
+
+      // 6. Potted Plant near Window with Natural Wooden Tripod Stand
+      const plantGroup = new THREE.Group();
+      plantGroup.position.set(1.75, 0, 1.5);
+
+      // Tripod legs
+      const tripodMat = new THREE.MeshStandardMaterial({ color: 0x8d6e63, roughness: 0.7 });
+      [0, (2 * Math.PI) / 3, (4 * Math.PI) / 3].forEach(angle => {
+        const tLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.38), tripodMat);
+        tLeg.position.set(Math.cos(angle) * 0.12, 0.18, Math.sin(angle) * 0.12);
+        tLeg.rotation.z = Math.cos(angle) * 0.18;
+        tLeg.rotation.x = Math.sin(angle) * 0.18;
+        tLeg.castShadow = true;
+        plantGroup.add(tLeg);
+      });
+
+      // White ceramic pot
+      const potMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+      const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.14, 0.32, 16), potMat);
+      pot.position.set(0, 0.42, 0);
+      pot.castShadow = true;
+      pot.receiveShadow = true;
+      plantGroup.add(pot);
+
+      // Lush layered leaves
+      const leafColors = [0x16a34a, 0x22c55e, 0x4ade80];
+      [-0.1, 0.1, 0].forEach((ox, i) => {
+        const foliage = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.18, 1),
+          new THREE.MeshStandardMaterial({ color: leafColors[i], roughness: 0.65, flatShading: true })
+        );
+        foliage.position.set(ox, 0.68 + i * 0.08, (i - 1) * 0.08);
+        foliage.castShadow = true;
+        plantGroup.add(foliage);
+      });
+
+      roomGroup.add(plantGroup);
+    };
+
+    // --- Student 3D Figure & Face Billboard ---
+    let studentFaceTexture, studentFaceMaterial;
+    let studentBodyGroup;
+
+    const buildStudentFigure = () => {
+      studentMesh = new THREE.Group();
+      studentMesh.position.set(state.studentPos.x, 0, state.studentPos.z);
+      roomGroup.add(studentMesh);
+
+      // 1. Stand Base (Diorama style circular golden token)
+      const baseGeo = new THREE.CylinderGeometry(0.28, 0.32, 0.04, 24);
+      const baseMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.35, metalness: 0.3 });
+      const base = new THREE.Mesh(baseGeo, baseMat);
+      base.position.y = 0.02;
+      base.castShadow = true;
+      base.receiveShadow = true;
+      studentMesh.add(base);
+
+      // 2. Body Group (Rotates dynamically to always face the camera!)
+      studentBodyGroup = new THREE.Group();
+      studentMesh.add(studentBodyGroup);
+
+      // Cute Miniature Shoes & Pants
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+      const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+
+      [-0.07, 0.07].forEach(x => {
+        // Shoe (Cute sneaker)
+        const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.05, 0.12), shoeMat);
+        shoe.position.set(x, 0.045, 0.02);
+        shoe.castShadow = true;
+        studentBodyGroup.add(shoe);
+
+        // Pants leg
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.12, 12), pantsMat);
+        leg.position.set(x, 0.12, 0);
+        leg.castShadow = true;
+        studentBodyGroup.add(leg);
+      });
+
+      // 3. Cute Hoodie / Sweater Body (Soft pastel blue with shoulders)
+      const hoodieMat = new THREE.MeshStandardMaterial({ color: 0x3b82f6, roughness: 0.6 });
+      const torsoGeo = new THREE.BoxGeometry(0.28, 0.22, 0.18);
+      const torso = new THREE.Mesh(torsoGeo, hoodieMat);
+      torso.position.set(0, 0.28, 0);
+      torso.castShadow = true;
+      torso.receiveShadow = true;
+      studentBodyGroup.add(torso);
+
+      // Front Kangaroo Pocket
+      const pocketMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.65 });
+      const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.015), pocketMat);
+      pocket.position.set(0, 0.24, 0.095);
+      studentBodyGroup.add(pocket);
+
+      // Gentle White Clothes Collar (Flat under chin, NEVER punctures face!)
+      const collarMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.12, 0.025, 16), collarMat);
+      collar.position.set(0, 0.39, 0);
+      studentBodyGroup.add(collar);
+
+      // 4. Cute Petite Arms & Hands (Gently forward pose)
+      const armMat = hoodieMat;
+      const handMat = new THREE.MeshStandardMaterial({ color: 0xffe2c7, roughness: 0.6 });
+
+      [-0.17, 0.17].forEach((x, idx) => {
+        const armGroup = new THREE.Group();
+        armGroup.position.set(x, 0.35, 0);
+
+        const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.036, 0.16, 12), armMat);
+        arm.position.set(0, -0.07, 0.02);
+        arm.rotation.x = 0.25;
+        arm.rotation.z = idx === 0 ? -0.15 : 0.15;
+        arm.castShadow = true;
+        armGroup.add(arm);
+
+        // Hand
+        const hand = new THREE.Mesh(new THREE.SphereGeometry(0.03, 12, 12), handMat);
+        hand.position.set(0, -0.16, 0.05);
+        armGroup.add(hand);
+
+        studentBodyGroup.add(armGroup);
+      });
+
+      // 5. Dynamic Face Billboard (Cute Bobblehead / Nendoroid proportion scale 0.85, sRGB bright color)
+      const faceCanvas = document.getElementById('workCanvas');
+      studentFaceTexture = new THREE.CanvasTexture(faceCanvas);
+      studentFaceTexture.encoding = THREE.sRGBEncoding; // Restores vivid natural bright colors without dark gamma wash!
+      studentFaceTexture.minFilter = THREE.LinearFilter;
+      studentFaceTexture.magFilter = THREE.LinearFilter;
+      studentFaceMaterial = new THREE.SpriteMaterial({
+        map: studentFaceTexture,
+        transparent: true,
+        depthWrite: false
+      });
+      const faceSprite = new THREE.Sprite(studentFaceMaterial);
+      faceSprite.position.set(0, 0.70, 0.02); // Perfectly centered bobblehead height
+      faceSprite.scale.set(0.85, 0.85, 1);    // Lovable cute big-head (가분수) proportion
+      studentMesh.add(faceSprite);
+
+      // 6. Highlight Ring on floor under student (selection / target marker)
+      const ringMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24, side: THREE.DoubleSide });
+      const ringGeo = new THREE.RingGeometry(0.35, 0.42, 32);
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.008;
+      studentMesh.add(ring);
+    };
+
+    // --- Face Composite Engine: Draws student photo + emotion expressions ---
+    const updateStudentFaceCanvas = () => {
+      const canvas = document.getElementById('workCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 256, 256);
+
+      // Draw Base Face
+      if (state.studentFaceImg) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(128, 128, 105, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+
+        const img = state.studentFaceImg;
+        const baseDim = Math.min(img.width || 256, img.height || 256);
+        const zoom = (state.faceCrop && state.faceCrop.zoom) ? state.faceCrop.zoom : 1.0;
+        const panX = (state.faceCrop && state.faceCrop.panX) ? state.faceCrop.panX : 0;
+        const panY = (state.faceCrop && state.faceCrop.panY) ? state.faceCrop.panY : 0;
+
+        // Crop window calculations according to user zoom & pan sliders
+        const cropW = baseDim / zoom;
+        const cropH = baseDim / zoom;
+        const centerX = (img.width || 256) / 2 + (panX * baseDim * 0.45);
+        const centerY = (img.height || 256) / 2 + (panY * baseDim * 0.45);
+        const sx = centerX - cropW / 2;
+        const sy = centerY - cropH / 2;
+
+        // Crisp, bright, vivid color filter to eliminate gloomy darkness
+        ctx.filter = 'brightness(1.10) contrast(1.05)';
+        ctx.drawImage(img, sx, sy, cropW, cropH, 18, 18, 220, 220);
+        ctx.filter = 'none';
+        ctx.restore();
+      } else {
+        // Default Illustrated Avatar
+        drawDefaultAvatar(ctx, state.studentAvatarId);
+      }
+
+      // Border Ring
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.beginPath();
+      ctx.arc(128, 128, 105, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Emotion Expression Overlay based on lighting level
+      drawEmotionOverlay(ctx, state.studentLightLevel);
+
+      // Update Three.js Texture & Previews
+      if (studentFaceTexture) studentFaceTexture.needsUpdate = true;
+
+      // Update Preview Canvas in modal
+      const previewCanvas = document.getElementById('facePreviewCanvas');
+      if (previewCanvas) {
+        const prevCtx = previewCanvas.getContext('2d');
+        prevCtx.clearRect(0, 0, 96, 96);
+        prevCtx.drawImage(canvas, 0, 0, 96, 96);
+      }
+    };
+
+    // --- Facial Alignment Guidelines Overlay (Eyes, Nose, Mouth, Face contour) ---
+    const drawFaceGuidelines = (ctx) => {
+      ctx.save();
+
+      // 1. Center symmetry vertical dashed guide
+      ctx.setLineDash([4, 4]);
+      ctx.strokeStyle = 'rgba(251, 191, 36, 0.45)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(128, 26);
+      ctx.lineTo(128, 230);
+      ctx.stroke();
+
+      // 2. Eye level horizontal dashed line
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
+      ctx.beginPath();
+      ctx.moveTo(35, 118);
+      ctx.lineTo(221, 118);
+      ctx.stroke();
+
+      // Helper function for guide labels with neat dark pill background
+      const drawGuideBadge = (text, x, y, col) => {
+        ctx.font = 'bold 10px Pretendard, -apple-system, sans-serif';
+        const w = ctx.measureText(text).width + 8;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+        if (ctx.roundRect) {
+          ctx.beginPath();
+          ctx.roundRect(x - w / 2, y - 8, w, 16, 4);
+          ctx.fill();
+        } else {
+          ctx.fillRect(x - w / 2, y - 8, w, 16);
+        }
+        ctx.fillStyle = col;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, x, y);
+      };
+
+      // 3. Left Eye Target Guide at (88, 118)
+      ctx.setLineDash([]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#38bdf8'; // Sky blue
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+      ctx.beginPath();
+      ctx.arc(88, 118, 17, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Eye crosshairs
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(88, 105); ctx.lineTo(88, 131);
+      ctx.moveTo(75, 118); ctx.lineTo(101, 118);
+      ctx.stroke();
+      drawGuideBadge('👁️ 왼쪽 눈', 88, 92, '#38bdf8');
+
+      // 4. Right Eye Target Guide at (168, 118)
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.22)';
+      ctx.beginPath();
+      ctx.arc(168, 118, 17, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // Eye crosshairs
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(168, 105); ctx.lineTo(168, 131);
+      ctx.moveTo(155, 118); ctx.lineTo(181, 118);
+      ctx.stroke();
+      drawGuideBadge('👁️ 오른쪽 눈', 168, 92, '#38bdf8');
+
+      // 5. Nose Guide at (128, 142)
+      ctx.strokeStyle = '#34d399'; // Emerald
+      ctx.fillStyle = 'rgba(52, 211, 153, 0.25)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(128, 142, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#34d399';
+      ctx.beginPath();
+      ctx.arc(128, 142, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      drawGuideBadge('👃 코', 148, 142, '#34d399');
+
+      // 6. Mouth / Smile Guide at (128, 168)
+      ctx.strokeStyle = '#fb7185'; // Rose
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(128, 150, 22, 0.28 * Math.PI, 0.72 * Math.PI, false);
+      ctx.stroke();
+      drawGuideBadge('👄 입 (미소)', 128, 188, '#fb7185');
+
+      ctx.restore();
+    };
+
+    // --- Interactive Facial Guideline Canvas Renderer ---
+    const updateCropGuideCanvas = () => {
+      const canvas = document.getElementById('cropGuideCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, 256, 256);
+
+      if (state.studentFaceImg) {
+        const img = state.studentFaceImg;
+        const baseDim = Math.min(img.width || 256, img.height || 256);
+        const zoom = (state.faceCrop && state.faceCrop.zoom) ? state.faceCrop.zoom : 1.0;
+        const panX = (state.faceCrop && state.faceCrop.panX) ? state.faceCrop.panX : 0;
+        const panY = (state.faceCrop && state.faceCrop.panY) ? state.faceCrop.panY : 0;
+
+        const cropW = baseDim / zoom;
+        const cropH = baseDim / zoom;
+        const centerX = (img.width || 256) / 2 + (panX * baseDim * 0.45);
+        const centerY = (img.height || 256) / 2 + (panY * baseDim * 0.45);
+        const sx = centerX - cropW / 2;
+        const sy = centerY - cropH / 2;
+
+        // 1. Draw photo under guidelines
+        ctx.save();
+        ctx.filter = 'brightness(1.08) contrast(1.04)';
+        ctx.drawImage(img, sx, sy, cropW, cropH, 18, 18, 220, 220);
+        ctx.restore();
+
+        // 2. Darkened Cutout Mask outside circular face (radius 105 at center 128, 128)
+        ctx.save();
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+        ctx.beginPath();
+        ctx.rect(0, 0, 256, 256);
+        ctx.arc(128, 128, 105, 0, Math.PI * 2, true);
+        ctx.fill();
+        ctx.restore();
+
+        // 3. Golden circular face frame
+        ctx.save();
+        ctx.lineWidth = 3.5;
+        ctx.strokeStyle = '#f59e0b';
+        ctx.beginPath();
+        ctx.arc(128, 128, 105, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // 4. Facial guidelines
+        if (state.showGuidelines !== false) {
+          drawFaceGuidelines(ctx);
+        }
+      } else {
+        // Fallback default avatar with guidelines
+        drawDefaultAvatar(ctx, state.studentAvatarId);
+        if (state.showGuidelines !== false) {
+          drawFaceGuidelines(ctx);
+        }
+      }
+    };
+
+    // Synchronize both crop guide studio and 3D character face
+    const updateCropVisuals = () => {
+      updateCropGuideCanvas();
+      updateStudentVisuals();
+
+      const txtZoom = document.getElementById('txtZoomVal');
+      const sliderZoom = document.getElementById('sliderCropZoom');
+      if (txtZoom) txtZoom.textContent = `${(state.faceCrop.zoom || 1.0).toFixed(2)}x`;
+      if (sliderZoom) sliderZoom.value = state.faceCrop.zoom || 1.0;
+    };
+
+    // --- Direct Drag-to-Pan and Wheel-to-Zoom Interaction on Crop Guide Canvas ---
+    const setupCropGuideInteractions = () => {
+      const canvas = document.getElementById('cropGuideCanvas');
+      if (!canvas) return;
+
+      let isDragging = false;
+      let startX = 0, startY = 0;
+      let initialPanX = 0, initialPanY = 0;
+
+      const onPointerDown = (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        initialPanX = state.faceCrop.panX || 0;
+        initialPanY = state.faceCrop.panY || 0;
+        canvas.setPointerCapture(e.pointerId);
+        canvas.style.cursor = 'grabbing';
+      };
+
+      const onPointerMove = (e) => {
+        if (!isDragging) return;
+        const rect = canvas.getBoundingClientRect();
+        const scale = 256 / rect.width;
+        const dx = (e.clientX - startX) * scale;
+        const dy = (e.clientY - startY) * scale;
+
+        const zoom = state.faceCrop.zoom || 1.0;
+        // Exact 1:1 physical pixel sync:
+        const factor = 1 / (99 * zoom);
+        state.faceCrop.panX = Math.max(-1.8, Math.min(1.8, initialPanX - dx * factor));
+        state.faceCrop.panY = Math.max(-1.8, Math.min(1.8, initialPanY - dy * factor));
+
+        updateCropVisuals();
+      };
+
+      const endDrag = () => {
+        if (isDragging) {
+          isDragging = false;
+          canvas.style.cursor = 'grab';
+        }
+      };
+
+      canvas.addEventListener('pointerdown', onPointerDown);
+      canvas.addEventListener('pointermove', onPointerMove);
+      canvas.addEventListener('pointerup', endDrag);
+      canvas.addEventListener('pointercancel', endDrag);
+
+      // Wheel zoom centered on face
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+        state.faceCrop.zoom = Math.max(0.4, Math.min(3.0, (state.faceCrop.zoom || 1.0) * zoomFactor));
+        updateCropVisuals();
+      }, { passive: false });
+    };
+
+    // Draw pre-made cute cartoon avatars
+    const drawDefaultAvatar = (ctx, avatarId) => {
+      ctx.fillStyle = '#fce7db'; // Skin
+      ctx.beginPath();
+      ctx.arc(128, 128, 105, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Hair
+      ctx.fillStyle = '#262626';
+      if (avatarId === 'boy1' || avatarId === 'boy2') {
+        ctx.beginPath();
+        ctx.arc(128, 115, 108, Math.PI * 1.05, Math.PI * 1.95, false);
+        ctx.lineTo(210, 80);
+        ctx.bezierCurveTo(170, 30, 80, 30, 46, 80);
+        ctx.fill();
+      } else {
+        // Girl hair
+        ctx.beginPath();
+        ctx.arc(128, 110, 110, Math.PI * 0.95, Math.PI * 2.05, false);
+        ctx.lineTo(225, 170);
+        ctx.lineTo(195, 170);
+        ctx.bezierCurveTo(170, 60, 80, 60, 61, 170);
+        ctx.lineTo(31, 170);
+        ctx.fill();
+      }
+    };
+
+    // Helper: Draw Beautiful Glossy 3D Heart (Plump volume, glass sheen & rich radial depth)
+    const draw3DHeart = (ctx, cx, cy, size, rot = 0) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      if (rot) ctx.rotate(rot);
+
+      const s = size / 20;
+
+      // 1. Soft Ambient Heart Glow / Shadow
+      ctx.save();
+      ctx.shadowColor = 'rgba(244, 63, 94, 0.45)';
+      ctx.shadowBlur = 8 * s;
+      ctx.beginPath();
+      ctx.moveTo(0, 5 * s);
+      ctx.bezierCurveTo(-11 * s, -8 * s, -22 * s, 6 * s, 0, 21 * s);
+      ctx.bezierCurveTo(22 * s, 6 * s, 11 * s, -8 * s, 0, 5 * s);
+      ctx.closePath();
+      ctx.fillStyle = '#f43f5e';
+      ctx.fill();
+      ctx.restore();
+
+      // 2. Base Heart with Luscious 3D Radial Shading
+      const grad = ctx.createRadialGradient(-3 * s, 4 * s, 2 * s, 0, 8 * s, 18 * s);
+      grad.addColorStop(0, '#ff4d6d');   // Radiant plump coral-pink highlight center
+      grad.addColorStop(0.65, '#e11d48'); // Vibrant ruby rose
+      grad.addColorStop(1, '#9f1239');    // Deep dimensional shadow edge
+
+      ctx.beginPath();
+      ctx.moveTo(0, 5 * s);
+      ctx.bezierCurveTo(-11 * s, -8 * s, -22 * s, 6 * s, 0, 21 * s);
+      ctx.bezierCurveTo(22 * s, 6 * s, 11 * s, -8 * s, 0, 5 * s);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // 3. Crisp Delicate White Rim Accent
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = Math.max(1.2, 1.6 * s);
+      ctx.stroke();
+
+      // 4. Primary Glass Bubble Specular Highlight (Curved Bean/Crescent on upper-left lobe)
+      ctx.save();
+      ctx.beginPath();
+      ctx.ellipse(-6 * s, 2 * s, 4.5 * s, 2.2 * s, -Math.PI / 4.2, 0, Math.PI * 2);
+      const hlGrad = ctx.createLinearGradient(-8 * s, 0, -4 * s, 4 * s);
+      hlGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      hlGrad.addColorStop(1, 'rgba(255, 255, 255, 0.15)');
+      ctx.fillStyle = hlGrad;
+      ctx.fill();
+      ctx.restore();
+
+      // 5. Secondary Tiny Specular Glint on right lobe
+      ctx.beginPath();
+      ctx.arc(5.5 * s, 2.5 * s, 1.4 * s, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fill();
+
+      // 6. Bottom Rim Reflection Light
+      ctx.beginPath();
+      ctx.arc(0, 16 * s, 2 * s, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.fill();
+
+      ctx.restore();
+    };
+
+    // Helper: Draw Glassy Droplet falling in mid-air
+    const drawGlassyDroplet = (ctx, cx, cy, r, rot = 0) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      if (rot) ctx.rotate(rot);
+
+      ctx.beginPath();
+      ctx.moveTo(0, -r * 1.6);
+      ctx.bezierCurveTo(r * 1.15, -r * 0.35, r * 1.15, r, 0, r);
+      ctx.bezierCurveTo(-r * 1.15, r, -r * 1.15, -r * 0.35, 0, -r * 1.6);
+      ctx.closePath();
+
+      const dGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.1, 0, 0, r);
+      dGrad.addColorStop(0, 'rgba(224, 242, 254, 0.95)');
+      dGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.75)');
+      dGrad.addColorStop(1, 'rgba(2, 132, 199, 0.9)');
+      ctx.fillStyle = dGrad;
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Crisp white highlight
+      ctx.beginPath();
+      ctx.arc(-r * 0.3, -r * 0.15, r * 0.35, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      ctx.restore();
+    };
+
+    // Helper: Draw Real Translucent Liquid Tear Stream with swollen droplet bulb
+    const drawRealTearStream = (ctx, startX, startY, endX, endY, bulbRadius) => {
+      ctx.save();
+
+      const midX = (startX + endX) / 2 + (startX < 128 ? -2.5 : 2.5);
+      const midY = (startY + endY) / 2;
+
+      // Outer Soft Liquid Refraction Glow / Body
+      ctx.beginPath();
+      // Left curve of stream
+      ctx.moveTo(startX - 2.5, startY);
+      ctx.quadraticCurveTo(midX - 3.5, midY, endX - bulbRadius * 0.85, endY - bulbRadius * 0.3);
+      // Swollen teardrop bulb at bottom
+      ctx.bezierCurveTo(endX - bulbRadius * 1.3, endY + bulbRadius * 0.6, endX + bulbRadius * 1.3, endY + bulbRadius * 0.6, endX + bulbRadius * 0.85, endY - bulbRadius * 0.3);
+      // Right curve of stream
+      ctx.quadraticCurveTo(midX + 3.5, midY, startX + 2.5, startY);
+      ctx.closePath();
+
+      // Water gradient: crystal clear at top, pooling translucent cyan/water-blue at bottom
+      const wGrad = ctx.createLinearGradient(startX, startY, endX, endY + bulbRadius);
+      wGrad.addColorStop(0, 'rgba(186, 230, 253, 0.45)');
+      wGrad.addColorStop(0.6, 'rgba(56, 189, 248, 0.7)');
+      wGrad.addColorStop(1, 'rgba(2, 132, 199, 0.88)');
+      ctx.fillStyle = wGrad;
+      ctx.fill();
+
+      // Delicate surface refraction stroke (water boundary)
+      ctx.strokeStyle = 'rgba(3, 105, 161, 0.45)';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Curved White Specular Glint running down the stream
+      ctx.beginPath();
+      ctx.moveTo(startX - 0.5, startY + 4);
+      ctx.quadraticCurveTo(midX - 1, midY, endX - bulbRadius * 0.35, endY - 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // Bulb Specular Highlight (Crisp glint on the swollen droplet)
+      ctx.beginPath();
+      ctx.arc(endX - bulbRadius * 0.32, endY + bulbRadius * 0.15, bulbRadius * 0.38, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+
+      // Secondary soft bottom rim light
+      ctx.beginPath();
+      ctx.arc(endX + bulbRadius * 0.25, endY + bulbRadius * 0.35, bulbRadius * 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.fill();
+
+      ctx.restore();
+    };
+
+    // Helper: Draw Authentic Designer Sunglasses (Beveled acetate frame + curved polarized glass reflection)
+    const drawRealSunglasses = (ctx) => {
+      ctx.save();
+
+      // Frame outer path (Curved designer wayfarer silhouette)
+      const drawFrameShape = () => {
+        ctx.beginPath();
+        ctx.moveTo(54, 102);
+        ctx.bezierCurveTo(74, 98, 106, 100, 118, 108);
+        ctx.bezierCurveTo(124, 106, 132, 106, 138, 108);
+        ctx.bezierCurveTo(150, 100, 182, 98, 202, 102);
+        ctx.bezierCurveTo(208, 106, 206, 126, 198, 142);
+        ctx.bezierCurveTo(188, 154, 148, 154, 140, 136);
+        ctx.bezierCurveTo(134, 124, 122, 124, 116, 136);
+        ctx.bezierCurveTo(108, 154, 68, 154, 58, 142);
+        ctx.bezierCurveTo(50, 126, 48, 106, 54, 102);
+        ctx.closePath();
+      };
+
+      // 1. Acetate Frame Base (Polished Jet Obsidian with Subtle Gold Trim)
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 3;
+      drawFrameShape();
+      const frameGrad = ctx.createLinearGradient(128, 98, 128, 154);
+      frameGrad.addColorStop(0, '#1e293b'); // Highlight on top browline
+      frameGrad.addColorStop(0.3, '#090d16');
+      frameGrad.addColorStop(1, '#020617'); // Deep obsidian
+      ctx.fillStyle = frameGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#d97706'; // Warm refined amber-gold metal bevel trim
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      ctx.restore();
+
+      // 2. Browline Light Catch Bevel (Soft glossy light bouncing off top plastic edge)
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(56, 103);
+      ctx.bezierCurveTo(76, 99, 106, 101, 117, 108);
+      ctx.moveTo(139, 108);
+      ctx.bezierCurveTo(150, 101, 180, 99, 200, 103);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      ctx.restore();
+
+      // 3. Metallic Hinge Rivets (Small iconic silver/gold studs at temple edges)
+      [[55, 106], [201, 106]].forEach(([rx, ry]) => {
+        ctx.fillStyle = '#fef08a';
+        ctx.beginPath();
+        ctx.ellipse(rx, ry, 2.2, 1.4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 4. Polarized Glass Lenses (Left & Right)
+      const drawSingleLens = (lx, ly, lw, lh) => {
+        ctx.save();
+        // Lens contour
+        ctx.beginPath();
+        ctx.moveTo(lx + 7, ly);
+        ctx.lineTo(lx + lw - 7, ly);
+        ctx.quadraticCurveTo(lx + lw, ly, lx + lw, ly + 8);
+        ctx.lineTo(lx + lw - 3, ly + lh - 12);
+        ctx.quadraticCurveTo(lx + lw - 8, ly + lh, lx + lw / 2, ly + lh);
+        ctx.quadraticCurveTo(lx + 6, ly + lh, lx + 2, ly + lh - 12);
+        ctx.lineTo(lx, ly + 8);
+        ctx.quadraticCurveTo(lx, ly, lx + 7, ly);
+        ctx.closePath();
+
+        // Deep polarized smoked tint gradient
+        const lensGrad = ctx.createLinearGradient(lx, ly, lx, ly + lh);
+        lensGrad.addColorStop(0, 'rgba(15, 23, 42, 0.97)');
+        lensGrad.addColorStop(0.7, 'rgba(30, 41, 59, 0.92)');
+        lensGrad.addColorStop(1, 'rgba(49, 46, 129, 0.88)');
+        ctx.fillStyle = lensGrad;
+        ctx.fill();
+
+        // Clip to lens interior for glass reflection
+        ctx.clip();
+
+        // Sweeping Curved Glass Specular Highlight (Soft daylight sky reflection)
+        const glintGrad = ctx.createLinearGradient(lx, ly, lx + lw, ly + lh);
+        glintGrad.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+        glintGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.15)');
+        glintGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.0)');
+        glintGrad.addColorStop(0.75, 'rgba(255, 255, 255, 0.25)');
+        glintGrad.addColorStop(1, 'rgba(255, 255, 255, 0.05)');
+
+        ctx.beginPath();
+        ctx.moveTo(lx + 8, ly - 2);
+        ctx.lineTo(lx + lw + 10, ly + lh * 0.7);
+        ctx.lineTo(lx + lw + 10, ly + lh * 0.95);
+        ctx.lineTo(lx - 10, ly + 25);
+        ctx.closePath();
+        ctx.fillStyle = glintGrad;
+        ctx.fill();
+
+        // Inner lens edge ring reflection
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.restore();
+      };
+
+      // Draw Left & Right Lenses precisely over eye positions
+      drawSingleLens(63, 105, 52, 38);
+      drawSingleLens(141, 105, 52, 38);
+
+      // 5. Cinematic Starburst Sparkle (✨) on corner of lens frame
+      const drawSparkle = (sx, sy, r) => {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        ctx.shadowColor = '#fef08a';
+        ctx.shadowBlur = 6;
+        for (let i = 0; i < 2; i++) {
+          ctx.rotate(Math.PI / 4 * i);
+          ctx.beginPath();
+          ctx.ellipse(0, 0, r * (i === 0 ? 1 : 0.45), r * (i === 0 ? 0.22 : 0.22), 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.25, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.restore();
+      };
+
+      drawSparkle(198, 103, 10);
+
+      // 6. Realistic 3D Liquid Sweat Drop on Temple
+      const drawRealisticSweat = (sx, sy, r) => {
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+        ctx.shadowBlur = 3;
+        ctx.shadowOffsetY = 1.5;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 1.5);
+        ctx.bezierCurveTo(r * 1.1, -r * 0.4, r * 1.1, r, 0, r);
+        ctx.bezierCurveTo(-r * 1.1, r, -r * 1.1, -r * 0.4, 0, -r * 1.5);
+        ctx.closePath();
+
+        const swGrad = ctx.createRadialGradient(-r * 0.2, -r * 0.2, r * 0.1, 0, 0, r);
+        swGrad.addColorStop(0, 'rgba(224, 242, 254, 0.95)');
+        swGrad.addColorStop(0.7, 'rgba(56, 189, 248, 0.7)');
+        swGrad.addColorStop(1, 'rgba(2, 132, 199, 0.85)');
+        ctx.fillStyle = swGrad;
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(-r * 0.3, -r * 0.2, r * 0.35, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.restore();
+      };
+
+      drawRealisticSweat(48, 92, 5.5);
+      drawRealisticSweat(208, 90, 4.5);
+
+      ctx.restore();
+    };
+
+    // Draw dynamic emotions: Sunglasses (Glare), Popping Hearts (Optimal), Streaming Tears (Dark)
+    const drawEmotionOverlay = (ctx, lightLevel) => {
+      ctx.save();
+      const isRealPhoto = Boolean(state.studentFaceImg);
+
+      // ==========================================
+      // 1. GLARE (눈부심): Authentic Designer Sunglasses + Sunlight Flare
+      // ==========================================
+      if (lightLevel === 'glare') {
+        // A. Warm intense sunlight glare aura on outer ring
+        const grad = ctx.createRadialGradient(128, 128, 65, 128, 128, 105);
+        grad.addColorStop(0, 'rgba(255, 235, 120, 0)');
+        grad.addColorStop(0.85, 'rgba(255, 190, 0, 0.32)');
+        grad.addColorStop(1, 'rgba(255, 140, 0, 0.55)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(128, 128, 105, 0, Math.PI * 2);
+        ctx.fill();
+
+        // B. If cartoon avatar, draw squinting happy mouth under glasses
+        if (!isRealPhoto) {
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = '#1e293b';
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(106, 172);
+          ctx.quadraticCurveTo(128, 158, 150, 172);
+          ctx.stroke();
+        }
+
+        // C. Authentic Designer Polarized Sunglasses
+        drawRealSunglasses(ctx);
+
+      // ==========================================
+      // 2. OPTIMAL (쾌적함): Plump Glossy 3D Hearts & Airbrush Blush
+      // ==========================================
+      } else if (lightLevel === 'optimal') {
+        // If cartoon avatar, draw cheerful smiling face base
+        if (!isRealPhoto) {
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.arc(90, 120, 11, 0, Math.PI * 2);
+          ctx.arc(166, 120, 11, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(87, 117, 4, 0, Math.PI * 2);
+          ctx.arc(163, 117, 4, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Big Happy Smile
+          ctx.lineWidth = 6;
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.arc(128, 145, 24, 0.2, Math.PI - 0.2, false);
+          ctx.stroke();
+        }
+
+        // A. Soft Natural Airbrush Peach-Pink Cheek Blush
+        const drawBlush = (bx, by) => {
+          const bGrad = ctx.createRadialGradient(bx, by, 3, bx, by, 28);
+          bGrad.addColorStop(0, 'rgba(251, 113, 133, 0.45)');
+          bGrad.addColorStop(0.65, 'rgba(251, 113, 133, 0.18)');
+          bGrad.addColorStop(1, 'rgba(251, 113, 133, 0.0)');
+          ctx.fillStyle = bGrad;
+          ctx.beginPath();
+          ctx.arc(bx, by, 28, 0, Math.PI * 2);
+          ctx.fill();
+        };
+        drawBlush(76, 144);
+        drawBlush(180, 144);
+
+        // B. Plump Glossy 3D Hearts on Cheeks
+        draw3DHeart(ctx, 76, 142, 28, -0.15);
+        draw3DHeart(ctx, 180, 142, 28, 0.15);
+
+        // C. Dynamic Floating 3D Hearts Around Head
+        draw3DHeart(ctx, 50, 52, 32, -0.28);
+        draw3DHeart(ctx, 206, 56, 34, 0.28);
+        draw3DHeart(ctx, 178, 28, 22, -0.12);
+        draw3DHeart(ctx, 36, 100, 20, -0.3);
+        draw3DHeart(ctx, 222, 102, 20, 0.3);
+
+        // D. Little Sparkling Golden Fairy Stars
+        const drawStar = (sx, sy, r) => {
+          ctx.save();
+          ctx.translate(sx, sy);
+          ctx.fillStyle = 'rgba(254, 240, 138, 0.95)';
+          ctx.shadowColor = '#facc15';
+          ctx.shadowBlur = 5;
+          for (let i = 0; i < 2; i++) {
+            ctx.rotate(Math.PI / 4 * i);
+            ctx.beginPath();
+            ctx.ellipse(0, 0, r, r * 0.25, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
+        };
+        drawStar(64, 36, 6);
+        drawStar(198, 38, 6.5);
+        drawStar(128, 26, 5);
+
+      // ==========================================
+      // 3. DARK (어두움): Real Translucent Flowing Tears & Wet Eyelid Pools
+      // ==========================================
+      } else if (lightLevel === 'dark') {
+        // If cartoon avatar, draw sad angled eyes & trembling mouth
+        if (!isRealPhoto) {
+          ctx.lineWidth = 5;
+          ctx.strokeStyle = '#334155';
+          ctx.lineCap = 'round';
+          // Sad angled closed eyes (╥﹏╥ shape)
+          ctx.beginPath();
+          ctx.moveTo(76, 120); ctx.lineTo(96, 114); ctx.lineTo(104, 126);
+          ctx.moveTo(180, 120); ctx.lineTo(160, 114); ctx.lineTo(152, 126);
+          ctx.stroke();
+
+          // Trembling quivering mouth
+          ctx.beginPath();
+          ctx.moveTo(110, 172);
+          ctx.quadraticCurveTo(118, 165, 128, 172);
+          ctx.quadraticCurveTo(138, 179, 146, 172);
+          ctx.stroke();
+        }
+
+        // A. Glistening Water Pools at Lower Eyelids (찰랑이는 눈가 물웅덩이)
+        const drawEyePool = (ex, ey) => {
+          ctx.save();
+          ctx.beginPath();
+          ctx.ellipse(ex, ey, 16, 6, 0, 0, Math.PI * 2);
+          const pGrad = ctx.createLinearGradient(ex, ey - 6, ex, ey + 6);
+          pGrad.addColorStop(0, 'rgba(224, 242, 254, 0.45)');
+          pGrad.addColorStop(1, 'rgba(56, 189, 248, 0.7)');
+          ctx.fillStyle = pGrad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          // Liquid glint stars in eye pool
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(ex - 6, ey - 1, 1.8, 0, Math.PI * 2);
+          ctx.arc(ex + 5, ey, 1.3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        };
+        drawEyePool(88, 126);
+        drawEyePool(168, 126);
+
+        // B. Flowing Translucent Liquid Tear Streams Down Cheeks
+        drawRealTearStream(ctx, 86, 128, 80, 186, 7.5);
+        drawRealTearStream(ctx, 170, 128, 176, 186, 7.5);
+        // Delicate secondary trickle
+        drawRealTearStream(ctx, 96, 131, 94, 162, 4.5);
+        drawRealTearStream(ctx, 160, 131, 162, 162, 4.5);
+
+        // C. Falling Glassy Water Droplets in Mid-air
+        drawGlassyDroplet(ctx, 74, 204, 6.5, -0.2);
+        drawGlassyDroplet(ctx, 182, 204, 6.5, 0.2);
+        drawGlassyDroplet(ctx, 40, 146, 5, -0.4);
+        drawGlassyDroplet(ctx, 216, 146, 5, 0.4);
+        drawGlassyDroplet(ctx, 128, 218, 5.5, 0);
+      }
+
+      ctx.restore();
+    };
+
+    // --- Sunlight Position & Volumetric God Rays Computation ---
+    const updateSunPosition = () => {
+      // Altitude in radians
+      const altRad = (state.altitude * Math.PI) / 180;
+
+      // 1. Parallel Directional Sunlight for crisp room shadows (placed far out along sun ray)
+      const lightDist = 18;
+      const lightY = lightDist * Math.sin(altRad);
+      const lightZ = lightDist * Math.cos(altRad);
+      dirLight.position.set(0, lightY, lightZ);
+
+      // 2. Visual 3D Sun Sphere & Aura (Comfortable viewing height: dist=8.8m)
+      const sunDist = 8.8;
+      const sunY = sunDist * Math.sin(altRad);
+      const sunZ = sunDist * Math.cos(altRad);
+      const sunX = 0; // Pure South noon
+
+      sunMesh.position.set(sunX, sunY, sunZ);
+
+      // Update Sun Line indicator
+      if (sunMesh.userData.line) {
+        const positions = sunMesh.userData.line.geometry.attributes.position.array;
+        positions[0] = sunX;
+        positions[1] = sunY;
+        positions[2] = sunZ;
+        positions[3] = 0;
+        positions[4] = 1.2;
+        positions[5] = 0;
+        sunMesh.userData.line.geometry.attributes.position.needsUpdate = true;
+      }
+
+      // Update Dynamic Sunlight Penetration Card
+      const badgePen = document.getElementById('badgePenetration');
+      const txtPen = document.getElementById('txtPenetrationDesc');
+      if (badgePen && txtPen) {
+        if (state.altitude <= 35) {
+          badgePen.textContent = '깊숙이 유입 (~4.0m)';
+          badgePen.className = 'text-[12px] font-bold text-toss-blue';
+          txtPen.innerHTML = '<strong class="text-toss-grey900">겨울 (동지)</strong>: 낮은 태양 각도로 방 끝까지 깊숙이 햇빛이 비춰 <strong class="text-toss-blue">따뜻한 자연 난방</strong> 효과!';
+        } else if (state.altitude >= 70) {
+          badgePen.textContent = '창가 최소화 (~0.5m)';
+          badgePen.className = 'text-[12px] font-bold text-toss-grey500';
+          txtPen.innerHTML = '<strong class="text-toss-grey900">여름 (하지)</strong>: 높은 태양 각도로 창문 바로 앞 바닥에만 햇빛이 떨어져 <strong class="text-toss-blue">실내 과열 방지</strong>!';
+        } else {
+          badgePen.textContent = '중간 유입 (~1.6m)';
+          badgePen.className = 'text-[12px] font-bold text-toss-blue';
+          txtPen.innerHTML = '<strong class="text-toss-grey900">봄·가을 (춘추분)</strong>: 책상 주변까지 부드럽게 유입되어 공부하기 가장 <strong class="text-toss-blue">쾌적한 일조 환경</strong>!';
+        }
+      }
+
+      // Rebuild Volumetric Rays
+      rebuildVolumetricGodRays();
+
+      // Update Dynamic Lighting at student position
+      evaluateStudentLighting();
+    };
+
+    // Rebuild the beautiful translucent 3D light shafts (God rays)
+    const rebuildVolumetricGodRays = () => {
+      while (volumetricGodRaysGroup.children.length > 0) {
+        volumetricGodRaysGroup.remove(volumetricGodRaysGroup.children[0]);
+      }
+
+      const altRad = (state.altitude * Math.PI) / 180;
+      const tanAlt = Math.tan(altRad);
+      const cosAlt = Math.cos(altRad);
+      const sinAlt = Math.sin(altRad);
+
+      // Light ray material (golden volumetric glow)
+      const rayMat = new THREE.MeshBasicMaterial({
+        color: 0xffd54f,
+        transparent: true,
+        opacity: Math.max(0.18 * (1 - state.blindAmount / 100), 0.01),
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      });
+
+      // 1. SIDE WINDOW RAY (If side window is open)
+      if (state.sideWindow && state.blindAmount < 95) {
+        const isTall = (state.windowShape === 'tall');
+        const w = isTall ? 0.8 : 2.5;
+        const h = isTall ? 2.0 : 0.64;
+        const windowCenterY = isTall ? 1.4 : 1.75; // Wide ribbon window is raised higher (Center Y = 1.75m)
+        const windowTopY = windowCenterY + h / 2;     // 2.40m (tall) vs 2.07m (wide)
+        const windowBottomY = windowCenterY - h / 2;  // 0.40m (tall) vs 1.43m (wide)
+
+        // Project light from window to floor (Y=0)
+        // Floor reach distance Z: Z_hit = windowZ - (windowY / tanAlt)
+        const zWindow = 2.25;
+        const zHitTop = zWindow - (windowTopY / tanAlt);
+        const zHitBottom = zWindow - (windowBottomY / tanAlt);
+
+        // Build a 3D Frustum Mesh representing the volumetric light beam
+        const rayGeo = new THREE.BufferGeometry();
+        const p1 = new THREE.Vector3(-w/2, windowTopY, zWindow);
+        const p2 = new THREE.Vector3(w/2, windowTopY, zWindow);
+        const p3 = new THREE.Vector3(w/2, windowBottomY, zWindow);
+        const p4 = new THREE.Vector3(-w/2, windowBottomY, zWindow);
+
+        const f1 = new THREE.Vector3(-w/2 * 1.15, 0.01, Math.max(zHitTop, -2.1));
+        const f2 = new THREE.Vector3(w/2 * 1.15, 0.01, Math.max(zHitTop, -2.1));
+        const f3 = new THREE.Vector3(w/2 * 1.1, 0.01, Math.max(zHitBottom, -2.1));
+        const f4 = new THREE.Vector3(-w/2 * 1.1, 0.01, Math.max(zHitBottom, -2.1));
+
+        const vertices = [
+          // Top beam sheet
+          p1.x, p1.y, p1.z,  p2.x, p2.y, p2.z,  f2.x, f2.y, f2.z,
+          p1.x, p1.y, p1.z,  f2.x, f2.y, f2.z,  f1.x, f1.y, f1.z,
+          // Bottom beam sheet
+          p4.x, p4.y, p4.z,  f4.x, f4.y, f4.z,  f3.x, f3.y, f3.z,
+          p4.x, p4.y, p4.z,  f3.x, f3.y, f3.z,  p3.x, p3.y, p3.z,
+          // Left sheet
+          p1.x, p1.y, p1.z,  f1.x, f1.y, f1.z,  f4.x, f4.y, f4.z,
+          p1.x, p1.y, p1.z,  f4.x, f4.y, f4.z,  p4.x, p4.y, p4.z,
+          // Right sheet
+          p2.x, p2.y, p2.z,  p3.x, p3.y, p3.z,  f3.x, f3.y, f3.z,
+          p2.x, p2.y, p2.z,  f3.x, f3.y, f3.z,  f2.x, f2.y, f2.z,
+        ];
+
+        rayGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+        const sideRayMesh = new THREE.Mesh(rayGeo, rayMat);
+        volumetricGodRaysGroup.add(sideRayMesh);
+
+        // Floor Light Pool Glow Patch (Warm, radiant floor sun patch)
+        const poolLength = Math.max(Math.abs(zHitBottom - zHitTop), 0.25);
+        const poolGeo = new THREE.PlaneGeometry(w * 1.12, poolLength);
+        const poolMat = new THREE.MeshBasicMaterial({
+          color: isTall ? 0xffea75 : 0xffe270,
+          transparent: true,
+          opacity: Math.max((isTall ? 0.46 : 0.38) * (1 - state.blindAmount / 100), 0.02),
+          blending: THREE.AdditiveBlending
+        });
+        const poolMesh = new THREE.Mesh(poolGeo, poolMat);
+        poolMesh.rotation.x = -Math.PI / 2;
+        poolMesh.position.set(0, 0.012, (Math.max(zHitTop, -2.1) + Math.max(zHitBottom, -2.1)) / 2);
+        volumetricGodRaysGroup.add(poolMesh);
+      }
+
+      // 2. SKYLIGHT RAY (If skylight is open)
+      if (state.skylight) {
+        const sw = 1.7;
+        const sd = 0.85;
+        const roofY = 2.8;
+
+        // Downward vertical light shaft from roof to floor (Balanced gentle translucent glow)
+        const skyRayMat = new THREE.MeshBasicMaterial({
+          color: 0xfff7c2,
+          transparent: true,
+          opacity: 0.18,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending
+        });
+
+        // Shift beam slightly according to sun angle
+        const zShift = -(roofY / tanAlt);
+
+        const p1 = new THREE.Vector3(-sw/2, roofY, -sd/2);
+        const p2 = new THREE.Vector3(sw/2, roofY, -sd/2);
+        const p3 = new THREE.Vector3(sw/2, roofY, sd/2);
+        const p4 = new THREE.Vector3(-sw/2, roofY, sd/2);
+
+        const f1 = new THREE.Vector3(-sw/2 * 1.18, 0.01, -sd/2 + zShift * 0.4);
+        const f2 = new THREE.Vector3(sw/2 * 1.18, 0.01, -sd/2 + zShift * 0.4);
+        const f3 = new THREE.Vector3(sw/2 * 1.18, 0.01, sd/2 + zShift * 0.4);
+        const f4 = new THREE.Vector3(-sw/2 * 1.18, 0.01, sd/2 + zShift * 0.4);
+
+        const skyRayGeo = new THREE.BufferGeometry();
+        const skyVertices = [
+          p1.x, p1.y, p1.z, p2.x, p2.y, p2.z, f2.x, f2.y, f2.z,
+          p1.x, p1.y, p1.z, f2.x, f2.y, f2.z, f1.x, f1.y, f1.z,
+
+          p3.x, p3.y, p3.z, p4.x, p4.y, p4.z, f4.x, f4.y, f4.z,
+          p3.x, p3.y, p3.z, f4.x, f4.y, f4.z, f3.x, f3.y, f3.z,
+
+          p4.x, p4.y, p4.z, p1.x, p1.y, p1.z, f1.x, f1.y, f1.z,
+          p4.x, p4.y, p4.z, f1.x, f1.y, f1.z, f4.x, f4.y, f4.z,
+
+          p2.x, p2.y, p2.z, p3.x, p3.y, p3.z, f3.x, f3.y, f3.z,
+          p2.x, p2.y, p2.z, f3.x, f3.y, f3.z, f2.x, f2.y, f2.z,
+        ];
+        skyRayGeo.setAttribute('position', new THREE.Float32BufferAttribute(skyVertices, 3));
+        const skyMesh = new THREE.Mesh(skyRayGeo, skyRayMat);
+        volumetricGodRaysGroup.add(skyMesh);
+
+        // Balanced Floor Glow Patch for Skylight (Comfortable uniform overhead illumination)
+        const skyPoolGeo = new THREE.CircleGeometry(1.25, 32);
+        const skyPoolMat = new THREE.MeshBasicMaterial({
+          color: 0xffea95,
+          transparent: true,
+          opacity: 0.36,
+          blending: THREE.AdditiveBlending
+        });
+        const skyPool = new THREE.Mesh(skyPoolGeo, skyPoolMat);
+        skyPool.rotation.x = -Math.PI / 2;
+        skyPool.position.set(0, 0.015, zShift * 0.35);
+        volumetricGodRaysGroup.add(skyPool);
+      }
+    };
+
+    // Update real physics bounce light and ambient illumination
+    const updateRoomIllumination = () => {
+      const altRad = (state.altitude * Math.PI) / 180;
+      const tanAlt = Math.tan(altRad);
+
+      // 1. Stable, comfortable daylight room ambient
+      const targetAmbient = 0.15;
+      ambientLight.intensity = THREE.MathUtils.lerp(ambientLight.intensity, targetAmbient, 0.1);
+
+      // 2. Direct Sunlight: Constant outdoor sunlight (outside brightness stays constant regardless of window state)
+      dirLight.intensity = 3.3;
+
+      // 3. Physical Bounce Light 1: Side Window Floor Reflection
+      // Originates directly from the golden sun patch on the floor, bouncing upward into the room
+      if (sideBounceLight) {
+        if (state.sideWindow && state.blindAmount < 95) {
+          const isTall = (state.windowShape === 'tall');
+          const windowCenterY = isTall ? 1.4 : 1.75; // Raised higher up
+          const h = isTall ? 2.0 : 0.64;
+          const windowTopY = windowCenterY + h / 2;
+          const windowBottomY = windowCenterY - h / 2;
+
+          const zHitTop = 2.25 - (windowTopY / tanAlt);
+          const zHitBottom = 2.25 - (windowBottomY / tanAlt);
+          const floorSpotZ = THREE.MathUtils.clamp((zHitTop + zHitBottom) / 2, -1.8, 1.8);
+
+          // Move the bounce light to the actual floor spot where the sun lands!
+          sideBounceLight.position.set(0, 0.25, floorSpotZ);
+
+          const blindFactor = (1 - state.blindAmount / 100);
+          // Rich, warm bounce for both shapes (balanced so wide window is also clearly bright!)
+          const targetIntensity = (isTall ? 2.8 : 2.3) * blindFactor;
+          sideBounceLight.distance = isTall ? 4.8 : 4.0;
+          sideBounceLight.intensity = THREE.MathUtils.lerp(sideBounceLight.intensity, targetIntensity, 0.1);
+        } else {
+          sideBounceLight.intensity = THREE.MathUtils.lerp(sideBounceLight.intensity, 0, 0.15);
+        }
+      }
+
+      // 4. Physical Bounce Light 2: Skylight Floor Reflection
+      // Radiates upward from the floor center under the skylight, flooding all 4 walls and ceiling evenly
+      if (skyBounceLight) {
+        if (state.skylight) {
+          const zShift = -(2.8 / tanAlt) * 0.35;
+          skyBounceLight.position.set(0, 0.25, THREE.MathUtils.clamp(zShift, -1.2, 1.2));
+          // Harmonious overhead daylight bounce (bright, clear, non-blinding)
+          skyBounceLight.distance = 4.8;
+          skyBounceLight.intensity = THREE.MathUtils.lerp(skyBounceLight.intensity, 2.7, 0.1);
+        } else {
+          skyBounceLight.intensity = THREE.MathUtils.lerp(skyBounceLight.intensity, 0, 0.15);
+        }
+      }
+    };
+
+    // --- Dynamic Student Light Level & Emotion Evaluation ---
+    const evaluateStudentLighting = () => {
+      const px = studentMesh.position.x;
+      const pz = studentMesh.position.z;
+      const altRad = (state.altitude * Math.PI) / 180;
+      const tanAlt = Math.tan(altRad);
+
+      let inDirectBeam = false;
+      let inSkylightBeam = false;
+
+      // 1. Check Side Window Beam
+      if (state.sideWindow && state.blindAmount < 80) {
+        const isTall = (state.windowShape === 'tall');
+        const w = isTall ? 0.8 : 2.5;
+        const h = isTall ? 2.0 : 0.64;
+        const windowCenterY = isTall ? 1.4 : 1.75;
+        const zWindow = 2.25;
+        const zHitTop = zWindow - ((windowCenterY + h/2) / tanAlt);
+        const zHitBottom = zWindow - ((windowCenterY - h/2) / tanAlt);
+
+        // Is student X within window width, and Z within sun beam stretch?
+        if (Math.abs(px) < w/2 * 1.2 && pz >= Math.min(zHitTop, zHitBottom) && pz <= Math.max(zHitTop, zHitBottom) + 0.35) {
+          inDirectBeam = true;
+        }
+      }
+
+      // 2. Check Skylight Beam
+      if (state.skylight) {
+        const zShift = -(2.8 / tanAlt) * 0.35;
+        const distFromCenter = Math.hypot(px, pz - zShift);
+        if (distFromCenter < 1.35) {
+          inSkylightBeam = true;
+        }
+      }
+
+      // Proximity to physical floor bounce light spots
+      let nearBounceLight = false;
+      if (sideBounceLight && sideBounceLight.intensity > 0.8) {
+        const distToSideBounce = Math.hypot(px - sideBounceLight.position.x, pz - sideBounceLight.position.z);
+        if (distToSideBounce < (state.windowShape === 'tall' ? 1.7 : 1.5)) {
+          nearBounceLight = true;
+        }
+      }
+      if (skyBounceLight && skyBounceLight.intensity > 1.0) {
+        const distToSkyBounce = Math.hypot(px, pz - skyBounceLight.position.z);
+        if (distToSkyBounce < 1.8) {
+          nearBounceLight = true;
+        }
+      }
+
+      // Determine Light Level:
+      let newLevel = 'dark';
+
+      if (inDirectBeam && state.blindAmount < 35) {
+        // Direct glaring beam
+        newLevel = 'glare';
+      } else if (nearBounceLight || (inDirectBeam && state.blindAmount >= 35) || inSkylightBeam) {
+        // Comfortably lit by diffuse bounced sunlight
+        newLevel = 'optimal';
+      } else {
+        // In natural deep room shadow
+        newLevel = 'dark';
+      }
+
+      if (state.studentLightLevel !== newLevel) {
+        state.studentLightLevel = newLevel;
+        updateStudentFaceCanvas();
+        updateSpeechBubble();
+      }
+    };
+
+    // Update Floating Speech Bubble content and style
+    const updateSpeechBubble = () => {
+      const bubble = document.getElementById('studentSpeechBubble');
+      const badge = document.getElementById('speechLightStatusBadge');
+      const text = document.getElementById('speechText');
+      const card = document.getElementById('speechBubbleCard') || (bubble ? bubble.querySelector('div') : null);
+      const arrow = document.getElementById('speechBubbleArrow');
+
+      if (state.studentLightLevel === 'glare') {
+        if (badge) {
+          badge.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-toss-redLight text-toss-red border border-toss-red/20 font-bold shrink-0';
+          badge.textContent = '과다 채광 (눈부심)';
+        }
+        if (text) text.textContent = '"햇빛이 너무 강해서 눈이 부셔요! 블라인드를 내리거나 자리를 안쪽으로 옮겨주세요."';
+        if (card) card.className = 'bg-white border border-toss-red/30 rounded-2xl px-4 py-3 shadow-md max-w-[280px] sm:max-w-[310px] transition-colors duration-200 pointer-events-auto';
+        if (arrow) arrow.className = 'w-0 h-0 border-x-[6px] border-x-transparent border-t-[7px] border-t-white drop-shadow-sm transition-colors duration-200';
+      } else if (state.studentLightLevel === 'optimal') {
+        if (badge) {
+          badge.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-toss-blueLight text-toss-blue border border-toss-blue/20 font-bold shrink-0';
+          badge.textContent = '적정 채광 (쾌적함)';
+        }
+        if (text) text.textContent = '"햇살이 부드럽고 따뜻하게 들어와서 책 읽기에 딱 좋아요."';
+        if (card) card.className = 'bg-white border border-toss-grey200 rounded-2xl px-4 py-3 shadow-md max-w-[280px] sm:max-w-[310px] transition-colors duration-200 pointer-events-auto';
+        if (arrow) arrow.className = 'w-0 h-0 border-x-[6px] border-x-transparent border-t-[7px] border-t-white drop-shadow-sm transition-colors duration-200';
+      } else {
+        if (badge) {
+          badge.className = 'text-[11px] px-2.5 py-0.5 rounded-full bg-toss-grey100 text-toss-grey600 border border-toss-grey200 font-bold shrink-0';
+          badge.textContent = '채광 부족 (어두움)';
+        }
+        if (text) text.textContent = '"빛이 부족해서 글씨가 잘 안 보여요. 창문을 열거나 채광을 늘려주세요."';
+        if (card) card.className = 'bg-white border border-toss-grey200 rounded-2xl px-4 py-3 shadow-md max-w-[280px] sm:max-w-[310px] transition-colors duration-200 pointer-events-auto';
+        if (arrow) arrow.className = 'w-0 h-0 border-x-[6px] border-x-transparent border-t-[7px] border-t-white drop-shadow-sm transition-colors duration-200';
+      }
+    };
+
+    // Position Speech Bubble directly above the 3D student figure in real-time
+    const updateSpeechBubblePosition = () => {
+      const bubble = document.getElementById('studentSpeechBubble');
+      if (!bubble || !studentMesh || !camera || !canvasContainer) return;
+
+      const headPos = new THREE.Vector3();
+      studentMesh.getWorldPosition(headPos);
+      headPos.y += 1.05; // Position naturally right above head sprite
+
+      const p = headPos.clone().project(camera);
+      // Behind camera view check
+      if (p.z > 1.0) {
+        bubble.style.opacity = '0';
+        return;
+      }
+
+      const w = canvasContainer.clientWidth;
+      const h = canvasContainer.clientHeight;
+      const rawX = (p.x * 0.5 + 0.5) * w;
+      const rawY = (-p.y * 0.5 + 0.5) * h;
+
+      const bw = bubble.offsetWidth || 280;
+      const bh = bubble.offsetHeight || 90;
+      const halfW = bw / 2;
+
+      // Keep within canvas screen viewport margins
+      const margin = 12;
+      const clampedX = Math.max(halfW + margin, Math.min(w - halfW - margin, rawX));
+      const clampedY = Math.max(bh + margin, Math.min(h - 20, rawY - 8));
+
+      bubble.style.left = `${clampedX}px`;
+      bubble.style.top = `${clampedY}px`;
+      bubble.style.opacity = '1';
+    };
+
+    // --- Interactive Drag and Drop for Student Figure ---
+    const setupStudentDrag = () => {
+      let isMouseDown = false;
+      const mouse = new THREE.Vector2();
+      const offset = new THREE.Vector3();
+
+      const onPointerDown = (e) => {
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(studentMesh.children, true);
+
+        if (intersects.length > 0) {
+          isDraggingStudent = true;
+          controls.enabled = false; // Disable orbit control while dragging figure
+          dragPlane.position.y = 0;
+          const planeIntersects = raycaster.intersectObject(dragPlane);
+          if (planeIntersects.length > 0) {
+            offset.copy(studentMesh.position).sub(planeIntersects[0].point);
+          }
+          canvasContainer.style.cursor = 'grabbing';
+          playTone(440, 'triangle', 0.08, 0.05);
+        }
+      };
+
+      const onPointerMove = (e) => {
+        if (!isDraggingStudent) return;
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const planeIntersects = raycaster.intersectObject(dragPlane);
+        if (planeIntersects.length > 0) {
+          const targetPoint = planeIntersects[0].point.clone().add(offset);
+          // Clamp inside the room walls: X: [-2.1, 2.1], Z: [-1.9, 1.9]
+          studentMesh.position.x = THREE.MathUtils.clamp(targetPoint.x, -2.1, 2.1);
+          studentMesh.position.z = THREE.MathUtils.clamp(targetPoint.z, -1.9, 1.9);
+          state.studentPos.x = studentMesh.position.x;
+          state.studentPos.z = studentMesh.position.z;
+
+          evaluateStudentLighting();
+        }
+      };
+
+      const onPointerUp = () => {
+        if (isDraggingStudent) {
+          isDraggingStudent = false;
+          controls.enabled = true;
+          canvasContainer.style.cursor = 'grab';
+          playTone(550, 'triangle', 0.08, 0.04);
+        }
+      };
+
+      renderer.domElement.addEventListener('pointerdown', onPointerDown);
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
+    };
+
+    // --- Window Visibility & Open/Close Helpers ---
+    const updateWindows = () => {
+      // Side window: When open, hollow frame + glass + open sashes. When closed, solid wall panel.
+      sideWindowFrame.visible = state.sideWindow;
+      if (sideWindowClosedWall) sideWindowClosedWall.visible = !state.sideWindow;
+      blindsGroup.visible = state.sideWindow;
+
+      // Skylight: When open, skylight glass frame. When closed, solid roof ceiling.
+      skylightFrame.visible = state.skylight;
+      if (skylightClosedCover) skylightClosedCover.visible = !state.skylight;
+
+      rebuildVolumetricGodRays();
+      evaluateStudentLighting();
+    };
+
+    // --- Main Animation Loop ---
+    const animate = () => {
+      requestAnimationFrame(animate);
+      controls.update();
+
+      // Soft lerp for room illumination
+      updateRoomIllumination();
+
+      // Subtle pulse to Sun Sprite
+      if (sunMesh) {
+        const time = Date.now() * 0.003;
+        sunMesh.children[0].scale.set(3.8 + Math.sin(time) * 0.2, 3.8 + Math.sin(time) * 0.2, 1);
+      }
+
+      // Keep student body smoothly facing camera so body and face always face the exact same direction!
+      if (studentBodyGroup && camera && studentMesh) {
+        const dx = camera.position.x - studentMesh.position.x;
+        const dz = camera.position.z - studentMesh.position.z;
+        studentBodyGroup.rotation.y = Math.atan2(dx, dz);
+      }
+
+      // Update Speech Bubble 3D screen position above student character
+      updateSpeechBubblePosition();
+
+      renderer.render(scene, camera);
+    };
+
+    const onWindowResize = () => {
+      camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+    };
+
+    // --- UI Event Handlers & Reactive State Bindings ---
+    const initUI = () => {
+      // 1. Season buttons
+      const seasonButtons = document.querySelectorAll('.season-btn');
+      seasonButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const s = btn.dataset.season;
+          state.season = s;
+          if (s === 'winter') state.altitude = 30.0;
+          if (s === 'spring') state.altitude = 53.5;
+          if (s === 'summer') state.altitude = 77.0;
+
+          document.getElementById('sliderAltitude').value = state.altitude;
+          updateSeasonBadges();
+          updateSunPosition();
+          playTone(600, 'sine', 0.1, 0.06);
+        });
+      });
+
+      // 2. Altitude Slider
+      const sliderAltitude = document.getElementById('sliderAltitude');
+      sliderAltitude.addEventListener('input', (e) => {
+        state.altitude = parseFloat(e.target.value);
+        if (state.altitude <= 35) state.season = 'winter';
+        else if (state.altitude >= 70) state.season = 'summer';
+        else state.season = 'spring';
+
+        updateSeasonBadges();
+        updateSunPosition();
+      });
+
+
+      // 4. Side Window Toggle
+      const btnToggleSideWindow = document.getElementById('btnToggleSideWindow');
+      btnToggleSideWindow.addEventListener('click', () => {
+        state.sideWindow = !state.sideWindow;
+        const badge = document.getElementById('badgeSideWindow');
+        if (state.sideWindow) {
+          btnToggleSideWindow.className = 'p-2.5 rounded-xl border-2 border-toss-blue bg-toss-blueLight text-toss-blue flex flex-col items-center gap-1 transition active:scale-95';
+          badge.textContent = '열림 (채광 중)';
+          badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-toss-blue text-white font-bold';
+        } else {
+          btnToggleSideWindow.className = 'p-2.5 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 flex flex-col items-center gap-1 transition active:scale-95';
+          badge.textContent = '닫힘';
+          badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-toss-grey200 text-toss-grey500 font-medium';
+        }
+        updateWindows();
+        playTone(480, 'sine', 0.1, 0.05);
+      });
+
+      // 5. Skylight Toggle
+      const btnToggleSkylight = document.getElementById('btnToggleSkylight');
+      btnToggleSkylight.addEventListener('click', () => {
+        state.skylight = !state.skylight;
+        const badge = document.getElementById('badgeSkylight');
+        if (state.skylight) {
+          btnToggleSkylight.className = 'p-2.5 rounded-xl border-2 border-toss-blue bg-toss-blueLight text-toss-blue flex flex-col items-center gap-1 transition active:scale-95';
+          badge.textContent = '열림 (3배 채광!)';
+          badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-toss-blue text-white font-bold';
+          playSuccessChime();
+        } else {
+          btnToggleSkylight.className = 'p-2.5 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 flex flex-col items-center gap-1 transition active:scale-95';
+          badge.textContent = '닫힘';
+          badge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-toss-grey200 text-toss-grey500 font-medium';
+          playTone(400, 'sine', 0.1, 0.05);
+        }
+        updateWindows();
+      });
+
+      // 6. Window Shape (Tall vs Wide)
+      const btnShapeTall = document.getElementById('btnShapeTall');
+      const btnShapeWide = document.getElementById('btnShapeWide');
+
+      btnShapeTall.addEventListener('click', () => {
+        state.windowShape = 'tall';
+        btnShapeTall.className = 'p-2.5 rounded-xl border-2 border-toss-blue bg-toss-blueLight text-toss-blue flex flex-col items-center gap-1.5 transition active:scale-95';
+        btnShapeWide.className = 'p-2.5 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 flex flex-col items-center gap-1.5 transition active:scale-95';
+        rebuildSideWindowFrame('tall');
+        rebuildVolumetricGodRays();
+        evaluateStudentLighting();
+        playTone(580, 'sine', 0.08, 0.05);
+      });
+
+      btnShapeWide.addEventListener('click', () => {
+        state.windowShape = 'wide';
+        btnShapeWide.className = 'p-2.5 rounded-xl border-2 border-toss-blue bg-toss-blueLight text-toss-blue flex flex-col items-center gap-1.5 transition active:scale-95';
+        btnShapeTall.className = 'p-2.5 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 flex flex-col items-center gap-1.5 transition active:scale-95';
+        rebuildSideWindowFrame('wide');
+        rebuildVolumetricGodRays();
+        evaluateStudentLighting();
+        playTone(520, 'sine', 0.08, 0.05);
+      });
+
+      // 7. Blinds Slider
+      const sliderBlind = document.getElementById('sliderBlind');
+      const txtBlindVal = document.getElementById('txtBlindVal');
+      sliderBlind.addEventListener('input', (e) => {
+        state.blindAmount = parseInt(e.target.value);
+        if (state.blindAmount === 0) txtBlindVal.textContent = '0% (완전 개방)';
+        else if (state.blindAmount === 100) txtBlindVal.textContent = '100% (완전 차광)';
+        else txtBlindVal.textContent = `${state.blindAmount}%`;
+
+        updateBlindsVisual();
+        rebuildVolumetricGodRays();
+        evaluateStudentLighting();
+      });
+
+      // 8. Camera Views
+      const camBtns = [
+        { id: 'btnCamIsometric', pos: [9, 7, 10], target: [0, 1.2, 0] },
+        { id: 'btnCamFront', pos: [0, 2.5, 11], target: [0, 1.4, 0] },
+        { id: 'btnCamTop', pos: [0, 11, 2], target: [0, 0, 0] }
+      ];
+      camBtns.forEach(({ id, pos, target }) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('click', () => {
+          camera.position.set(...pos);
+          controls.target.set(...target);
+          camBtns.forEach(b => {
+            const el = document.getElementById(b.id);
+            if (el) {
+              if (b.id === id) {
+                el.className = 'px-3 py-1 rounded-lg bg-white text-toss-grey900 font-bold shadow-sm transition';
+              } else {
+                el.className = 'px-3 py-1 rounded-lg text-toss-grey600 hover:text-toss-grey900 font-medium transition';
+              }
+            }
+          });
+        });
+      });
+
+      // 9. Class / Quiz Mode Toggle
+      const btnToggleClassMode = document.getElementById('btnToggleClassMode');
+      btnToggleClassMode.addEventListener('click', () => {
+        state.showEduNotes = !state.showEduNotes;
+        document.querySelectorAll('.edu-note').forEach(el => {
+          el.style.display = state.showEduNotes ? 'block' : 'none';
+        });
+        const icon = document.getElementById('classModeIcon');
+        if (icon) {
+          icon.className = `w-2 h-2 rounded-full inline-block ${state.showEduNotes ? 'bg-toss-blue' : 'bg-toss-grey400'}`;
+        }
+        document.getElementById('classModeText').textContent = state.showEduNotes ? '해설 켜짐' : '퀴즈 모드';
+      });
+
+      // 10. Reset Button
+      document.getElementById('btnResetAll').addEventListener('click', () => {
+        state.season = 'spring';
+        state.altitude = 53.5;
+        state.eaves = true;
+        state.sideWindow = true;
+        state.skylight = false;
+        state.windowShape = 'tall';
+        state.blindAmount = 0;
+        studentMesh.position.set(0.5, 0, 0.2);
+
+        document.getElementById('sliderAltitude').value = 53.5;
+        document.getElementById('sliderBlind').value = 0;
+        document.getElementById('txtBlindVal').textContent = '0% (완전 개방)';
+
+        updateSeasonBadges();
+        rebuildSideWindowFrame('tall');
+        updateBlindsVisual();
+        updateWindows();
+        updateSunPosition();
+        camera.position.set(9, 7, 10);
+        controls.target.set(0, 1.2, 0);
+        playSuccessChime();
+      });
+
+      // 11. Modal Setup for Student Photo & Webcam
+      setupStudentModal();
+    };
+
+    // Update seasonal UI badges
+    const updateSeasonBadges = () => {
+      document.getElementById('txtAltitudeVal').textContent = `${state.altitude.toFixed(1)}°`;
+      document.getElementById('badgeAltitude').textContent = `${state.altitude.toFixed(1)}°`;
+      
+      const seasonBtns = document.querySelectorAll('.season-btn');
+      seasonBtns.forEach(btn => {
+        if (btn.dataset.season === state.season) {
+          btn.className = 'season-btn flex flex-col items-center justify-center p-2 rounded-xl border-2 border-toss-blue bg-toss-blueLight text-toss-blue font-bold transition active:scale-95';
+          btn.querySelector('.text-\\[11px\\]').className = 'font-bold text-toss-blue text-[11px] mb-0.5';
+        } else {
+          btn.className = 'season-btn flex flex-col items-center justify-center p-2 rounded-xl border border-toss-grey200 bg-toss-grey50 text-toss-grey700 hover:bg-toss-grey100 transition active:scale-95';
+          btn.querySelector('.text-\\[11px\\]').className = 'font-medium text-toss-grey500 text-[11px] mb-0.5';
+        }
+      });
+
+      const badgeSeason = document.getElementById('badgeSeason');
+      if (state.season === 'winter') badgeSeason.textContent = '겨울 (동지)';
+      else if (state.season === 'summer') badgeSeason.textContent = '여름 (하지)';
+      else badgeSeason.textContent = '봄·가을 (춘추분)';
+    };
+
+    // --- Webcam & Student Registration Modal System ---
+    let webcamStream = null;
+
+    const setupStudentModal = () => {
+      const modal = document.getElementById('modalStudent');
+      const btnOpen = document.getElementById('btnOpenStudentModal');
+      const btnClose = document.getElementById('btnCloseModal');
+      const btnApply = document.getElementById('btnApplyStudent');
+
+      const tabWebcam = document.getElementById('tabWebcam');
+      const tabUpload = document.getElementById('tabUpload');
+
+      const secWebcam = document.getElementById('sectionWebcam');
+      const secUpload = document.getElementById('sectionUpload');
+
+      const dropZone = document.getElementById('dropZoneUpload');
+      const cropGuideStudio = document.getElementById('cropGuideStudio');
+      const fileInput = document.getElementById('filePhotoInput');
+      const btnChangePhoto = document.getElementById('btnChangePhoto');
+      const btnToggleGuidelines = document.getElementById('btnToggleGuidelines');
+      const txtGuideText = document.getElementById('txtGuideToggleText');
+      const btnZoomIn = document.getElementById('btnZoomIn');
+      const btnZoomOut = document.getElementById('btnZoomOut');
+      const sliderCropZoom = document.getElementById('sliderCropZoom');
+      const btnResetCrop = document.getElementById('btnResetCrop');
+
+      // Initialize direct on-canvas dragging & wheel zooming
+      setupCropGuideInteractions();
+
+      btnOpen.addEventListener('click', () => {
+        modal.classList.remove('hidden');
+        switchTab(tabUpload, secUpload); // Open File Upload tab by default
+        
+        if (state.studentFaceImg) {
+          if (dropZone) dropZone.classList.add('hidden');
+          if (cropGuideStudio) cropGuideStudio.classList.remove('hidden');
+        } else {
+          if (dropZone) dropZone.classList.remove('hidden');
+          if (cropGuideStudio) cropGuideStudio.classList.add('hidden');
+        }
+        updateCropVisuals();
+      });
+
+      btnClose.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        stopWebcam();
+      });
+
+      // Tabs switcher (Upload vs Webcam)
+      const switchTab = (activeTab, activeSec) => {
+        [tabWebcam, tabUpload].forEach(t => {
+          if (t) t.className = 'flex-1 py-1.5 rounded-lg text-toss-grey500 hover:text-toss-grey900 font-medium transition flex items-center justify-center gap-1.5';
+        });
+        if (activeTab) activeTab.className = 'flex-1 py-1.5 rounded-lg bg-white text-toss-grey900 font-bold transition flex items-center justify-center gap-1.5 shadow-sm';
+
+        [secWebcam, secUpload].forEach(s => { if (s) s.classList.add('hidden'); });
+        if (activeSec) activeSec.classList.remove('hidden');
+
+        if (activeTab === tabWebcam) {
+          startWebcam();
+        } else {
+          stopWebcam();
+          updateCropVisuals();
+        }
+      };
+
+      tabUpload.addEventListener('click', () => switchTab(tabUpload, secUpload));
+      tabWebcam.addEventListener('click', () => switchTab(tabWebcam, secWebcam));
+
+      // Change Photo Button -> opens file picker
+      if (btnChangePhoto && fileInput) {
+        btnChangePhoto.addEventListener('click', () => {
+          fileInput.click();
+        });
+      }
+
+      // Guidelines Visibility Toggle Button
+      if (btnToggleGuidelines) {
+        btnToggleGuidelines.addEventListener('click', () => {
+          state.showGuidelines = (state.showGuidelines !== false) ? false : true;
+          if (txtGuideIcon) txtGuideIcon.textContent = state.showGuidelines ? '👁️' : '🙈';
+          if (txtGuideText) txtGuideText.textContent = state.showGuidelines ? '가이드 켜짐' : '가이드 꺼짐';
+          updateCropGuideCanvas();
+        });
+      }
+
+      // Zoom In / Out Buttons & Slider
+      if (btnZoomIn) {
+        btnZoomIn.addEventListener('click', () => {
+          state.faceCrop.zoom = Math.min(3.0, (state.faceCrop.zoom || 1.0) * 1.15);
+          updateCropVisuals();
+        });
+      }
+      if (btnZoomOut) {
+        btnZoomOut.addEventListener('click', () => {
+          state.faceCrop.zoom = Math.max(0.4, (state.faceCrop.zoom || 1.0) / 1.15);
+          updateCropVisuals();
+        });
+      }
+      if (sliderCropZoom) {
+        sliderCropZoom.addEventListener('input', (e) => {
+          state.faceCrop.zoom = parseFloat(e.target.value);
+          updateCropVisuals();
+        });
+      }
+      if (btnResetCrop) {
+        btnResetCrop.addEventListener('click', () => {
+          state.faceCrop = { zoom: 1.0, panX: 0, panY: 0 };
+          updateCropVisuals();
+        });
+      }
+
+      // Webcam Capture Buttons
+      document.getElementById('btnCaptureCountdown').addEventListener('click', () => {
+        runWebcamCountdown(3);
+      });
+      document.getElementById('btnCaptureInstant').addEventListener('click', () => {
+        captureWebcamFrame();
+      });
+
+      // Robust Image File Handler (loads image and shows interactive guideline studio)
+      const handleImageFile = (file) => {
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          alert('이미지 파일(JPG, PNG, WebP 등)을 선택해 주세요.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const img = new Image();
+          img.onload = () => {
+            state.studentFaceImg = img;
+            state.studentPhotoType = 'upload';
+            state.faceCrop = { zoom: 1.0, panX: 0, panY: 0 };
+            
+            // Show studio with facial guidelines, hide upload dropzone
+            if (dropZone) dropZone.classList.add('hidden');
+            if (cropGuideStudio) cropGuideStudio.classList.remove('hidden');
+
+            // Instantly update canvas, guidelines and 3D character face!
+            updateCropVisuals();
+
+            // Visual feedback
+            const statusText = document.getElementById('uploadStatusText');
+            if (statusText) {
+              statusText.textContent = `✅ '${file.name}' 적용 완료! 가이드라인에 얼굴을 맞춰보세요.`;
+              statusText.className = 'text-xs text-toss-blue font-bold mt-1';
+            }
+            const previewLabel = document.getElementById('previewLabel');
+            if (previewLabel) previewLabel.textContent = `사진 적용됨: ${file.name.substring(0, 12)}...`;
+
+            playSuccessChime();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      };
+
+      // File Input Change
+      if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleImageFile(e.target.files[0]);
+          }
+        });
+      }
+
+      // Drag and Drop support on dropzone
+      if (dropZone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+          dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.add('border-toss-blue', 'bg-toss-blueLight/50');
+          });
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+          dropZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropZone.classList.remove('border-toss-blue', 'bg-toss-blueLight/50');
+          });
+        });
+        dropZone.addEventListener('drop', (e) => {
+          const dt = e.dataTransfer;
+          if (dt && dt.files && dt.files.length > 0) {
+            handleImageFile(dt.files[0]);
+          }
+        });
+      }
+
+      // Apply button
+      btnApply.addEventListener('click', () => {
+        // Update Top Navigation Bar avatar thumbnail
+        const topPreview = document.getElementById('topAvatarPreview');
+        if (topPreview) {
+          topPreview.innerHTML = '';
+          const miniCanvas = document.createElement('canvas');
+          miniCanvas.width = 28;
+          miniCanvas.height = 28;
+          const miniCtx = miniCanvas.getContext('2d');
+          miniCtx.drawImage(document.getElementById('workCanvas'), 0, 0, 28, 28);
+          topPreview.appendChild(miniCanvas);
+        }
+
+        modal.classList.add('hidden');
+        stopWebcam();
+        updateStudentVisuals();
+        updateSpeechBubble();
+        playSuccessChime();
+      });
+    };
+
+    // Start Webcam
+    const startWebcam = async () => {
+      const video = document.getElementById('webcamVideo');
+      try {
+        if (!webcamStream) {
+          webcamStream = await navigator.mediaDevices.getUserMedia({
+            video: { width: 640, height: 480, facingMode: 'user' }
+          });
+          video.srcObject = webcamStream;
+        }
+      } catch (err) {
+        console.warn('Webcam not accessible:', err);
+      }
+    };
+
+    // Stop Webcam
+    const stopWebcam = () => {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+      }
+    };
+
+    // Webcam Countdown & Snap
+    const runWebcamCountdown = (count) => {
+      const countdownEl = document.getElementById('webcamCountdown');
+      countdownEl.classList.remove('hidden');
+      countdownEl.textContent = count;
+      playTone(440, 'sine', 0.1, 0.08);
+
+      const interval = setInterval(() => {
+        count--;
+        if (count > 0) {
+          countdownEl.textContent = count;
+          playTone(440, 'sine', 0.1, 0.08);
+        } else {
+          clearInterval(interval);
+          countdownEl.classList.add('hidden');
+          captureWebcamFrame();
+        }
+      }, 1000);
+    };
+
+    // Capture single frame from Webcam Video
+    const captureWebcamFrame = () => {
+      const video = document.getElementById('webcamVideo');
+      if (!video || !webcamStream) return;
+
+      const flash = document.getElementById('flashOverlay');
+      flash.style.opacity = '1';
+      setTimeout(() => flash.style.opacity = '0', 180);
+      playShutterSound();
+
+      // Draw square crop of video
+      const snapCanvas = document.createElement('canvas');
+      const size = Math.min(video.videoWidth || 480, video.videoHeight || 480);
+      snapCanvas.width = 256;
+      snapCanvas.height = 256;
+      const ctx = snapCanvas.getContext('2d');
+
+      const startX = ((video.videoWidth || 640) - size) / 2;
+      const startY = ((video.videoHeight || 480) - size) / 2;
+      ctx.drawImage(video, startX, startY, size, size, 0, 0, 256, 256);
+
+      const img = new Image();
+      img.onload = () => {
+        state.studentFaceImg = img;
+        state.studentPhotoType = 'webcam';
+        state.faceCrop = { zoom: 1.0, panX: 0, panY: 0 };
+
+        // Automatically switch from webcam to upload/studio tab
+        const tabUpload = document.getElementById('tabUpload');
+        const secUpload = document.getElementById('sectionUpload');
+        const tabWebcam = document.getElementById('tabWebcam');
+        const secWebcam = document.getElementById('sectionWebcam');
+        if (tabUpload && secUpload) {
+          [tabWebcam, tabUpload].forEach(t => {
+            if (t) t.className = 'flex-1 py-1.5 rounded-lg text-toss-grey500 hover:text-toss-grey900 font-medium transition flex items-center justify-center gap-1.5';
+          });
+          tabUpload.className = 'flex-1 py-1.5 rounded-lg bg-white text-toss-grey900 font-bold transition flex items-center justify-center gap-1.5 shadow-sm';
+          if (secWebcam) secWebcam.classList.add('hidden');
+          secUpload.classList.remove('hidden');
+          stopWebcam();
+        }
+
+        const dropZone = document.getElementById('dropZoneUpload');
+        const studio = document.getElementById('cropGuideStudio');
+        if (dropZone) dropZone.classList.add('hidden');
+        if (studio) studio.classList.remove('hidden');
+
+        updateCropVisuals();
+
+        const previewLabel = document.getElementById('previewLabel');
+        if (previewLabel) previewLabel.textContent = '웹캠 촬영본 적용됨 (가이드라인에 맞춤 가능)';
+
+        playSuccessChime();
+      };
+      img.src = snapCanvas.toDataURL('image/png');
+    };
+
+    const updateStudentVisuals = () => {
+      updateStudentFaceCanvas();
+      evaluateStudentLighting();
+    };
+
+    // --- Window Load Bootstrapper ---
+    window.addEventListener('DOMContentLoaded', () => {
+      initThree();
+      initUI();
+      // Initialize default avatar
+      updateStudentFaceCanvas();
+    });
+  </script>
+</body>
+</html>
